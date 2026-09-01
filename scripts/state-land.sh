@@ -48,8 +48,9 @@ branch=$(git -C "$root" rev-parse --abbrev-ref HEAD)
 ahead=$(git -C "$root" rev-list --count "origin/$base..HEAD")
 [ "$ahead" -gt 0 ] || { say "nothing ahead of origin/$base"; exit 0; }
 
-# The guard forbids pushing the default branch, so commits sitting on it
-# locally get their own state/ branch; a flow branch is pushed as itself —
+# Workspace state lands by PR whatever the code repos' DONE mode is (and under
+# DONE=pr the guard forbids the direct push outright), so commits sitting on the
+# default branch locally get their own state/ branch; a flow branch is pushed as itself —
 # unless its PR is already merged. Reusing a landed branch pushes onto a branch
 # nobody will merge again, and the PR lookup below then reports that merged PR
 # as success while the new commits sit stranded off "$base". A fresh branch is
