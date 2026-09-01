@@ -65,8 +65,8 @@ agents/       implementer, reviewer            (the only standing agents)
 skills/       init-project, plan, build, design, retro, toolsmith, unblock, cleanup
 scripts/      task.sh (lifecycle) · verify.sh (gate) · preflight.sh ·
               loop.sh (headless driver) · notify.sh (human comms seam) · lib.sh
-hooks/        guard.py — blocks force-push, push-to-default, destructive rm,
-              plugin self-modification
+hooks/        guard.py — blocks force-push, destructive rm, plugin
+              self-modification, and (DONE=pr only) push-to-default
 templates/    project-side starter files
 DESIGN.md     every decision + why
 ```
