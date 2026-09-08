@@ -5,12 +5,12 @@ disable-model-invocation: true
 argument-hint: "[task-id | all]"
 ---
 
-Target: $ARGUMENTS (empty or `all` → use `task.sh next`).
+Arguments: $ARGUMENTS — the first word is the target (a task id; empty or `all` → use `task.sh next`), and an optional `model=<sonnet|opus|fable>` is the implementer's model (the planner's `Model:` pick, or the run's `MODEL=` pin; absent → `opus`).
 Scripts: `${CLAUDE_PLUGIN_ROOT}/scripts/`. You orchestrate; you do not write code yourself.
-Spawn every agent with `run_in_background: false` and wait for its result — the loop runs headless, and ending your turn tears down a background agent mid-work (DESIGN.md #44).
+Spawn every agent with `run_in_background: false` and wait for its result — the loop runs headless, and ending your turn tears down a background agent mid-work (DESIGN.md #44). **Never end your turn while an agent you spawned is still working, and never park on a timer (`ScheduleWakeup`, cron): a headless run ends the moment your turn ends, and the task blocks with no committed work.** A completion notice for an agent you did not spawn (a subagent's own child) is noise — the agent you spawned returns its own result in the same call; do not forward, do not wait, do not act on it.
 
 1. `preflight.sh --quick`; then `task.sh start <id>`.
-2. Spawn the `implementer` agent: "Implement task <id>. Folder: intentpipe/tasks/<id>-<slug>/". If UI-heavy and no design.md exists, run /intentpipe:design first.
+2. Spawn the `implementer` agent with `model` set to the `model=` argument: "Implement task <id>. Folder: intentpipe/tasks/<id>-<slug>/". If UI-heavy and no design.md exists, run /intentpipe:design first.
 3. `RESULT: blocked` → `task.sh block <id> "<question>"`, report to user, stop this task.
 4. Spawn the `reviewer` agent on the task — **always**, and always let it write a verdict to `review.md`, even on a resume where the branch is already complete and step 2 was a no-op. A branch that already looks finished still flows review → done; never stop at Status `in-progress`. Then:
    - `VERDICT: approve` → step 5.
