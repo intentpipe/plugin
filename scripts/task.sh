@@ -58,6 +58,7 @@ Timing: -
 Decision: -
 Resources: -
 Model: -
+Effort: -
 
 ## Goal
 

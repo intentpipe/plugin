@@ -2,6 +2,7 @@
 name: reviewer
 description: Fresh-context adversarial review of one task's diff against its acceptance criteria. Spawned by /intentpipe:build after implementation.
 model: opus
+effort: high
 memory: project
 disallowedTools: Edit, NotebookEdit
 ---

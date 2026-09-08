@@ -749,11 +749,23 @@ lib "set_field $(ls intentpipe/tasks/"$t4"-*/task.md) Status done"   # unclog th
 t5=$("$INTENTPIPE/scripts/task.sh" new "Sonnet task")
 t5md=$(ls intentpipe/tasks/"$t5"-*/task.md)
 grep -q '^Model: -' "$t5md" || fail "task.sh new must stamp a Model field"
+grep -q '^Effort: -' "$t5md" || fail "task.sh new must stamp an Effort field"
 lib "set_field $t5md Model sonnet"
 : > "$TMP/claude-args.log"
-PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (Model: sonnet) failed"
 grep -q -- '--model sonnet' "$TMP/claude-args.log" || fail "the planner's Model: sonnet must reach claude --model"
+grep -q -- '--effort medium' "$TMP/claude-args.log" || fail "a task without an Effort pick must run at medium"
+lib "set_field $t5md Effort high"
+: > "$TMP/claude-args.log"
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
+  "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (Effort: high) failed"
+grep -q -- '--effort high' "$TMP/claude-args.log" || fail "the planner's Effort: high must reach claude --effort"
+: > "$TMP/claude-args.log"
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 EFFORT=low env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
+  "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (EFFORT=low pin) failed"
+grep -q -- '--effort low' "$TMP/claude-args.log" || fail "an explicit EFFORT= must pin the run over the task's Effort: pick"
+lib "set_field $t5md Effort -"
 : > "$TMP/claude-args.log"
 PATH="$TMP/bin:$PATH" MAX_TASKS=1 MODEL=fable env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (MODEL=fable pin) failed"
