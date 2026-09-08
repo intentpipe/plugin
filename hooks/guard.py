@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """PreToolUse guard: deterministic safety rails.
-Blocks: force-push, destructive rm, and any edit to the intentpipe plugin itself
+Blocks: force-push, destructive rm, any write to a CLAUDE.md (code is ground truth;
+orientation lives in agent memory — INTENTPIPE_ALLOW_CLAUDE_MD=1 for a deliberate human
+edit), and any edit to the intentpipe plugin itself
 (self-modification must go through /intentpipe:retro proposals). Under DONE=pr
 it also blocks pushing the default branch — see PR_MODE_DENY.
 Exempt: dev sessions — when the session cwd is inside the plugin root, the
@@ -12,12 +14,23 @@ import os
 import re
 import sys
 
+CLAUDE_MD_REASON = ("CLAUDE.md is read-only for the pipeline: code is ground truth, and a module map "
+                    "in a file is re-paid by every session on every turn. Put orientation in agent "
+                    "memory. A human editing on purpose sets INTENTPIPE_ALLOW_CLAUDE_MD=1.")
+
+
+def claude_md_allowed() -> bool:
+    return os.environ.get("INTENTPIPE_ALLOW_CLAUDE_MD") == "1"
+
+
 BASH_DENY = [
     (r"git\s+push\b.*(\s--force\b|\s-f\b|\+\S+:)", "force-push is forbidden"),
     (r"rm\s+(-\w*[rf]\w*\s+)+(/|~|\$HOME)(\s|$)", "destructive rm on / or ~ is forbidden"),
     (r"git\s+checkout\s+.*--\s+\.", "wholesale checkout-discard is forbidden; revert specific files"),
     (r"rm\s+(-\S+\s+)*\S*\bupdates/?['\"]?(\s|$)", "deleting the updates/ folder is forbidden; remove only the note files you planned — the folder and its README stay"),
     (r"rm\s+(-\S+\s+)*\S*\bupdates/\*", "wildcard rm in updates/ is forbidden (it takes README.md with it); remove planned note files by name"),
+    (r"(>>?|\btee\b(\s+-a)?)\s*\S*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
+    (r"\bsed\s+(-\S+\s+)*-i\b.*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
 ]
 
 # Only under DONE=pr, where the platform is the merge arbiter (DESIGN #18): a
@@ -82,13 +95,16 @@ def main() -> None:
     cwd = data.get("cwd") or os.getcwd()
 
     if tool == "Bash":
-        rules = BASH_DENY + (PR_MODE_DENY if done_mode(cwd) == "pr" else [])
+        rules = [r for r in BASH_DENY if r[1] != CLAUDE_MD_REASON or not claude_md_allowed()]
+        rules += PR_MODE_DENY if done_mode(cwd) == "pr" else []
         for seg in segments(tin.get("command", "")):
             for pattern, reason in rules:
                 if re.search(pattern, seg):
                     deny(reason)
 
     if tool in ("Write", "Edit", "NotebookEdit"):
+        if os.path.basename(tin.get("file_path", "")) == "CLAUDE.md" and not claude_md_allowed():
+            deny(CLAUDE_MD_REASON)
         plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
         if plugin_root:
             root = os.path.realpath(plugin_root)

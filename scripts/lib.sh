@@ -140,6 +140,12 @@ after_done() { # after_done <branch>: fire the optional AFTER_DONE hook for work
     return 0
   fi
   log="$TASKS/_after-done.log"
+  # A hook's output is diagnostic, not a record: keep the last few runs, not
+  # every run since the workspace was born (it was 230 KB on quorum, committed
+  # and re-diffed by every state landing).
+  if [ -f "$log" ] && [ "$(wc -l < "$log")" -gt 400 ]; then
+    { tail -n 200 "$log" > "$log.tmp" && mv "$log.tmp" "$log"; } 2>/dev/null || true
+  fi
   { printf '\n=== %s · %s\n' "$(date -u +%FT%TZ)" "$branch"; } >> "$log" 2>/dev/null || true
   # $1 inside the -c string, so a branch name is an argument and never re-parsed
   # as shell by the hook command. INTENTPIPE_WORKSPACE/INTENTPIPE_BRANCH are for the hook that
