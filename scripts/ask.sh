@@ -5,6 +5,12 @@
 # orchestrator daemon can route the human's reply back into the task (task.sh
 # resolve). Tolerant like notify.sh — missing creds just means "print only" (the
 # task is still blocked, so it surfaces in NEEDS_HUMAN either way).
+#
+# Task 0071: the same question also reaches Quorum's chat for the project —
+# the task's feature channel when it has one, its project chat otherwise —
+# independent of Telegram creds and never affecting this script's own
+# tolerance. Quorum has no reply-routing of its own: the human still answers
+# on Telegram, task.sh resolve folds it in either way.
 set -euo pipefail
 id="${1:?usage: ask.sh <task-id> <question>}"
 question="${2:?usage: ask.sh <task-id> <question>}"
@@ -12,30 +18,37 @@ workspace="$PWD"   # loop.sh runs at the project root; the daemon reuses it as c
 
 echo "[ask] task $id needs a decision: $question"
 
+# shellcheck disable=SC1091
+. "$(dirname "${BASH_SOURCE[0]}")/quorum_post.sh"
+
 # Same creds + per-project topic discovery as notify.sh.
 tg_env="${TELEGRAM_ENV:-$HOME/.agent-orchestrator/telegram.env}"
 # shellcheck disable=SC1090
 if [ -f "$tg_env" ]; then . "$tg_env"; fi
+ws=""
 dir="$PWD"
 while [ "$dir" != "/" ]; do
   # shellcheck disable=SC1090
-  if [ -f "$dir/agents.env" ]; then . "$dir/agents.env"; break; fi
+  if [ -f "$dir/agents.env" ]; then . "$dir/agents.env"; ws="$dir"; break; fi
   # shellcheck disable=SC1090
-  if [ -f "$dir/intentpipe/agents.env" ]; then . "$dir/intentpipe/agents.env"; break; fi
+  if [ -f "$dir/intentpipe/agents.env" ]; then . "$dir/intentpipe/agents.env"; ws="$dir/intentpipe"; break; fi
   dir="$(dirname "$dir")"
 done
 name="${PROJECT_NAME:-}"
-
-if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
-  echo "[ask] no telegram creds — printed only, no reply-routing" >&2
-  exit 0
-fi
 
 text="🤔 Decision needed · task $id${name:+ · $name}
 
 $question
 
 Reply to this message to decide."
+
+feature="$(quorum_feature_for_task "$ws" "$id" 2>/dev/null || true)"
+quorum_post "$name" "$text" "$feature"
+
+if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+  echo "[ask] no telegram creds — printed only, no reply-routing" >&2
+  exit 0
+fi
 
 resp=$(curl -fsS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
   --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
