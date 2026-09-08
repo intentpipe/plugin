@@ -25,9 +25,10 @@
 # before any work (no network, stranded tree) are retried up to MAX_RETRIES with
 # RETRY_BACKOFF between tries — never counting against MAX_RESUME — then hard-stop
 # with the captured reason; a zero-commit branch is abandoned so the retry is clean.
-# Each task runs on the model the planner chose for it (Model: sonnet|opus in
-# task.md; unset/unknown → opus). An explicitly set MODEL=sonnet|opus|fable pins
-# the whole run instead — the escape hatch for limits/credits stays a one-knob
+# Each task's IMPLEMENTER runs on the model the planner chose for it (Model:
+# sonnet|opus in task.md; unset/unknown → opus), handed to the build skill as
+# `model=<m>`; the orchestrating session itself runs on ORCH_MODEL (default opus).
+# An explicitly set MODEL=sonnet|opus|fable pins the implementer for the whole run instead — the escape hatch for limits/credits stays a one-knob
 # override — and either way the session never silently falls back to a cheaper
 # default. Effort works the same way: the planner's Effort: field (low|medium|high|
 # xhigh|max, unset/unknown → medium) sets the implementer session's reasoning depth,
@@ -37,7 +38,7 @@
 # API-equivalent on a subscription) and tokens — plus a per-step wall-clock
 # breakdown (preflight / llm / verify / smoke) collected in tasks/<id>/timings.tsv
 # by the scripts themselves. Both are recorded into task.md (Cost:, Timing:).
-# Usage: MODEL=opus EFFORT=medium MAX_TASKS=5 MAX_COST_USD=15 MAX_RESUME=3 MAX_RETRIES=10 RETRY_BACKOFF=60 LIMIT_BACKOFF=1800 MAX_LIMIT_RETRIES=6 UPSTREAM_BACKOFF=1800 CONTINUE_ON_BLOCK=0 loop.sh
+# Usage: MODEL=opus ORCH_MODEL=opus EFFORT=medium MAX_TASKS=5 MAX_COST_USD=15 MAX_RESUME=3 MAX_RETRIES=10 RETRY_BACKOFF=60 LIMIT_BACKOFF=1800 MAX_LIMIT_RETRIES=6 UPSTREAM_BACKOFF=1800 CONTINUE_ON_BLOCK=0 loop.sh
 set -euo pipefail
 SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS/lib.sh"
@@ -78,6 +79,16 @@ MODEL_PINNED="${MODEL:+1}"
 MODEL="${MODEL:-opus}"
 MODEL_ARG=$(model_arg "$MODEL") \
   || { echo "ERROR: MODEL must be opus, sonnet, or fable (got '$MODEL')" >&2; exit 1; }
+# The build session itself is the orchestrator: it spawns the implementer and
+# the reviewer, reads verdicts, decides fix rounds and blocks — few turns, all
+# judgment. It runs on ORCH_MODEL (default opus) whatever the task's pick; the
+# task's Model: is handed to the skill in the prompt (`model=<m>`) and applies to
+# the implementer agent only. Quorum 0071: a sonnet orchestrator parked itself on
+# a wake-up timer waiting for a subagent and ended its turn — a headless run
+# ends with the turn, and the task blocked with no committed work.
+ORCH_MODEL="${ORCH_MODEL:-opus}"
+ORCH_MODEL_ARG=$(model_arg "$ORCH_MODEL") \
+  || { echo "ERROR: ORCH_MODEL must be opus, sonnet, or fable (got '$ORCH_MODEL')" >&2; exit 1; }
 total_cost=0 n=0 retries=0 total_in=0 total_out=0 total_secs=0
 # Consecutive usage-limit waits (reset when a task finishes) and the total time
 # spent in them, for the give-up message.
@@ -206,8 +217,8 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
       else echo "WARN: task $id has unknown Effort '$teffort' — using $EFFORT" >&2; fi
     fi
   fi
-  echo "Solving task with $(echo "$task_model" | tr '[:lower:]' '[:upper:]') at effort $task_effort"
-  resume=0; task_cost=0; task_in=0; task_out=0; fail_reason=""; prompt="$BUILD_SKILL $id"; sid=""
+  echo "Solving task with $(echo "$task_model" | tr '[:lower:]' '[:upper:]') at effort $task_effort (orchestrator: $ORCH_MODEL)"
+  resume=0; task_cost=0; task_in=0; task_out=0; fail_reason=""; prompt="$BUILD_SKILL $id model=$task_model"; sid=""
   # INTENTPIPE_TIMING_ID pins every script the session runs (preflight/verify) to this
   # task's timings.tsv, whatever its Status has become by then.
   export INTENTPIPE_TIMING_ID="$id"
@@ -220,10 +231,11 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
     sess_t0=$(date +%s); scripted_before=$(timing_total "$id")
     out=$(claude -p "$prompt" \
           ${sid:+--resume "$sid"} \
-          --model "$task_model_arg" \
+          --model "$ORCH_MODEL_ARG" \
           --effort "$task_effort" \
           --permission-mode acceptEdits \
           --allowedTools "Bash,Read,Edit,Write,Glob,Grep,Agent,Skill,TodoWrite" \
+          --disallowedTools "ScheduleWakeup,CronCreate" \
           --output-format json 2>"$errf") || rc=$?
     sess_secs=$(( $(date +%s) - sess_t0 ))
     scripted=$(( $(timing_total "$id") - scripted_before ))

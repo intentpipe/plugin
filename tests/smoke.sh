@@ -754,7 +754,9 @@ lib "set_field $t5md Model sonnet"
 : > "$TMP/claude-args.log"
 PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (Model: sonnet) failed"
-grep -q -- '--model sonnet' "$TMP/claude-args.log" || fail "the planner's Model: sonnet must reach claude --model"
+grep -q -- '--model opus' "$TMP/claude-args.log" || fail "the orchestrating session must stay on ORCH_MODEL (opus) whatever the task's pick"
+grep -q -- 'model=sonnet' "$TMP/claude-args.log" || fail "the planner's Model: sonnet must reach the build skill as model=sonnet"
+grep -q -- '--disallowedTools ScheduleWakeup,CronCreate' "$TMP/claude-args.log" || fail "a headless session must not be able to park on a timer"
 grep -q -- '--effort medium' "$TMP/claude-args.log" || fail "a task without an Effort pick must run at medium"
 lib "set_field $t5md Effort high"
 : > "$TMP/claude-args.log"
@@ -769,13 +771,17 @@ lib "set_field $t5md Effort -"
 : > "$TMP/claude-args.log"
 PATH="$TMP/bin:$PATH" MAX_TASKS=1 MODEL=fable env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (MODEL=fable pin) failed"
-grep -q -- '--model claude-fable-5' "$TMP/claude-args.log" \
-  || fail "an explicit MODEL= must pin the run over the task's Model: pick"
+grep -q -- 'model=fable' "$TMP/claude-args.log" \
+  || fail "an explicit MODEL= must pin the implementer for the run over the task's Model: pick"
+: > "$TMP/claude-args.log"
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 ORCH_MODEL=fable env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
+  "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (ORCH_MODEL=fable) failed"
+grep -q -- '--model claude-fable-5' "$TMP/claude-args.log" || fail "ORCH_MODEL= must set the session model"
 lib "set_field $t5md Model gpt9"
 : > "$TMP/claude-args.log"
 lout5=$(PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
   "$INTENTPIPE/scripts/loop.sh" 2>&1) || fail "loop.sh (unknown Model) failed: $lout5"
-grep -q -- '--model opus' "$TMP/claude-args.log" || fail "an unknown Model value must fall back to the default"
+grep -q -- 'model=opus' "$TMP/claude-args.log" || fail "an unknown Model value must fall back to the default"
 echo "$lout5" | grep -q "unknown Model 'gpt9'" || fail "an unknown Model value must warn"
 cd "$WS"
 
