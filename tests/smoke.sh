@@ -872,6 +872,12 @@ g '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x/core/CLAUDE.md","conte
 g '{"tool_name":"Bash","tool_input":{"command":"echo map >> core/CLAUDE.md"},"cwd":"/tmp/x"}' && fail "guard: redirect into CLAUDE.md allowed" || true
 g '{"tool_name":"Bash","tool_input":{"command":"cat CLAUDE.md"},"cwd":"/tmp/x"}' || fail "guard: reading CLAUDE.md blocked"
 INTENTPIPE_ALLOW_CLAUDE_MD=1 g '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x/CLAUDE.md","content":"x"},"cwd":"/tmp/x"}' || fail "guard: CLAUDE.md override ignored"
+g '{"tool_name":"Bash","tool_input":{"command":"git checkout -- .claude/settings.json"},"cwd":"/tmp/x"}' || fail "guard: reverting a dotfile path must be allowed"
+g '{"tool_name":"Bash","tool_input":{"command":"git checkout -- ."},"cwd":"/tmp/x"}' && fail "guard: wholesale checkout-discard allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"git checkout ."},"cwd":"/tmp/x"}' && fail "guard: bare checkout-discard allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"guard: block echo x >> CLAUDE.md from agents\""},"cwd":"/tmp/x"}' || fail "guard: a commit message mentioning a CLAUDE.md redirect must be allowed"
+g "$(printf '{"tool_name":"Bash","tool_input":{"command":"python3 - <<\\u0027PY\\u0027\\nprint(\\"echo x >> CLAUDE.md\\")\\nPY"},"cwd":"/tmp/x"}')" || fail "guard: a heredoc body mentioning a CLAUDE.md redirect must be allowed"
+g '{"tool_name":"Bash","tool_input":{"command":"echo x > \"core/CLAUDE.md\""},"cwd":"/tmp/x"}' && fail "guard: quoted CLAUDE.md redirect target allowed" || true
 # main/master is only a push target when it IS the ref: a chained `gh pr create
 # --base master`, or a branch merely containing the word, must not read as one.
 gp "git push -u origin feat/x; gh pr create --base master" \
