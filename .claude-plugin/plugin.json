@@ -1,7 +1,7 @@
 {
   "name": "intentpipe",
   "displayName": "Intentpipe",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "description": "Autonomous development from plain-language intent notes: verify-gated task loop with fresh-context implementer and reviewer.",
   "author": {
     "name": "Ivan Spirandelli"

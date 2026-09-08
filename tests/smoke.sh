@@ -749,11 +749,23 @@ lib "set_field $(ls intentpipe/tasks/"$t4"-*/task.md) Status done"   # unclog th
 t5=$("$INTENTPIPE/scripts/task.sh" new "Sonnet task")
 t5md=$(ls intentpipe/tasks/"$t5"-*/task.md)
 grep -q '^Model: -' "$t5md" || fail "task.sh new must stamp a Model field"
+grep -q '^Effort: -' "$t5md" || fail "task.sh new must stamp an Effort field"
 lib "set_field $t5md Model sonnet"
 : > "$TMP/claude-args.log"
-PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (Model: sonnet) failed"
 grep -q -- '--model sonnet' "$TMP/claude-args.log" || fail "the planner's Model: sonnet must reach claude --model"
+grep -q -- '--effort medium' "$TMP/claude-args.log" || fail "a task without an Effort pick must run at medium"
+lib "set_field $t5md Effort high"
+: > "$TMP/claude-args.log"
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
+  "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (Effort: high) failed"
+grep -q -- '--effort high' "$TMP/claude-args.log" || fail "the planner's Effort: high must reach claude --effort"
+: > "$TMP/claude-args.log"
+PATH="$TMP/bin:$PATH" MAX_TASKS=1 EFFORT=low env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL \
+  "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (EFFORT=low pin) failed"
+grep -q -- '--effort low' "$TMP/claude-args.log" || fail "an explicit EFFORT= must pin the run over the task's Effort: pick"
+lib "set_field $t5md Effort -"
 : > "$TMP/claude-args.log"
 PATH="$TMP/bin:$PATH" MAX_TASKS=1 MODEL=fable env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
   "$INTENTPIPE/scripts/loop.sh" >/dev/null 2>&1 || fail "loop.sh (MODEL=fable pin) failed"
@@ -856,6 +868,10 @@ g '{"tool_name":"Bash","tool_input":{"command":"rm -rf /"}}' && fail "guard: rm 
 g '{"tool_name":"Bash","tool_input":{"command":"git push origin task/0001-x"}}' || fail "guard: task-branch push blocked"
 g '{"tool_name":"Bash","tool_input":{"command":"rm -rf node_modules"}}' || fail "guard: normal rm blocked"
 g '{"tool_name":"Bash","tool_input":{"command":"rm -rf intentpipe/updates"}}' && fail "guard: updates folder rm allowed" || true
+g '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x/core/CLAUDE.md","content":"x"},"cwd":"/tmp/x"}' && fail "guard: CLAUDE.md write allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"echo map >> core/CLAUDE.md"},"cwd":"/tmp/x"}' && fail "guard: redirect into CLAUDE.md allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"cat CLAUDE.md"},"cwd":"/tmp/x"}' || fail "guard: reading CLAUDE.md blocked"
+INTENTPIPE_ALLOW_CLAUDE_MD=1 g '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x/CLAUDE.md","content":"x"},"cwd":"/tmp/x"}' || fail "guard: CLAUDE.md override ignored"
 # main/master is only a push target when it IS the ref: a chained `gh pr create
 # --base master`, or a branch merely containing the word, must not read as one.
 gp "git push -u origin feat/x; gh pr create --base master" \

@@ -58,8 +58,11 @@ Timing: -
 Decision: -
 Resources: -
 Model: -
+Effort: -
 
 ## Goal
+
+## Change map
 
 ## Acceptance criteria
 
