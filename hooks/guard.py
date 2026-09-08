@@ -26,7 +26,9 @@ def claude_md_allowed() -> bool:
 BASH_DENY = [
     (r"git\s+push\b.*(\s--force\b|\s-f\b|\+\S+:)", "force-push is forbidden"),
     (r"rm\s+(-\w*[rf]\w*\s+)+(/|~|\$HOME)(\s|$)", "destructive rm on / or ~ is forbidden"),
-    (r"git\s+checkout\s+.*--\s+\.", "wholesale checkout-discard is forbidden; revert specific files"),
+    # `.` as a whole argument: a dotfile path (`-- .claude/settings.json`) is a
+    # specific file, not a wholesale discard.
+    (r"git\s+(checkout|restore)\s+(.*\s)?(--\s+)?\.(\s|$)", "wholesale checkout-discard is forbidden; revert specific files"),
     (r"rm\s+(-\S+\s+)*\S*\bupdates/?['\"]?(\s|$)", "deleting the updates/ folder is forbidden; remove only the note files you planned — the folder and its README stay"),
     (r"rm\s+(-\S+\s+)*\S*\bupdates/\*", "wildcard rm in updates/ is forbidden (it takes README.md with it); remove planned note files by name"),
     (r"(>>?|\btee\b(\s+-a)?)\s*\S*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
@@ -57,6 +59,19 @@ SEPARATORS = re.compile(r"&&|\|\||[;\n|]")
 
 def segments(cmd: str):
     return [s for s in SEPARATORS.split(cmd) if s.strip()]
+
+
+HEREDOC_BODY = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n.*?^\1\s*$", re.S | re.M)
+PROSE_QUOTE = re.compile(r"'[^'\n]*\s[^'\n]*'|\"[^\"\n]*\s[^\"\n]*\"")
+
+
+def without_prose(cmd: str) -> str:
+    """The command with heredoc bodies and quoted spans that contain whitespace
+    removed: a commit message or a script body that merely *mentions* a redirect
+    into the protected file is prose, not a write. A quoted bare filename after a
+    redirect has no whitespace and stays visible to the rules."""
+    cmd = HEREDOC_BODY.sub("<<HEREDOC", cmd)
+    return PROSE_QUOTE.sub("''", cmd)
 
 
 def done_mode(cwd: str) -> str:
@@ -97,8 +112,11 @@ def main() -> None:
     if tool == "Bash":
         rules = [r for r in BASH_DENY if r[1] != CLAUDE_MD_REASON or not claude_md_allowed()]
         rules += PR_MODE_DENY if done_mode(cwd) == "pr" else []
-        for seg in segments(tin.get("command", "")):
-            for pattern, reason in rules:
+        raw = tin.get("command", "")
+        prose_free = without_prose(raw)
+        for pattern, reason in rules:
+            text = prose_free if reason == CLAUDE_MD_REASON else raw
+            for seg in segments(text):
                 if re.search(pattern, seg):
                     deny(reason)
 
