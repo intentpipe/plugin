@@ -654,7 +654,7 @@ QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
   "$INTENTPIPE/scripts/notify.sh" "feature does-not-exist: build finished" >/dev/null
 grep -q "http://quorum.example/v1/chat/projects/smoke/messages" "$CURL_LOG" \
   || fail "notify: unknown feature should fall back to project chat"
-rm -rf intentpipe/tasks/9001-test-task intentpipe/tasks/_features
+rm -rf intentpipe/tasks/9001-test-task intentpipe/tasks/_features/amend-flow.md
 # --- human-decision gate: a task marked `Decision: <question>` is asked on
 # Telegram (ask.sh posts the question + remembers message_id -> task), and
 # task.sh resolve folds the human's answer in and returns the task to todo.
