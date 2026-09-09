@@ -686,6 +686,9 @@ grep -q "http://quorum.example/v1/chat/projects/smoke/messages" "$CURL_LOG" \
   || fail "ask.sh: no quorum post for an unfeatured task's decision"
 grep -q "Bearer pipe-tok" "$CURL_LOG" || fail "ask.sh: quorum post missing pipe token"
 grep -q "wilt over 7 days or 3?" "$CURL_LOG" || fail "ask.sh: quorum post missing the question"
+grep -q '"kind": "decision_request"' "$CURL_LOG" \
+  || fail "ask.sh: quorum post is not a decision_request card (task 0072)"
+grep -q "\"task_id\": \"$newtmpl\"" "$CURL_LOG" || fail "ask.sh: quorum post missing the task id"
 : > "$CURL_LOG"
 TELEGRAM_BOT_TOKEN=tok TELEGRAM_CHAT_ID=42 DECISION_OFFERS_FILE="$offers" \
   "$INTENTPIPE/scripts/ask.sh" "$newtmpl" "wilt over 7 days or 3?" >/dev/null

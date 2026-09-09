@@ -69,3 +69,26 @@ quorum_post() { # project text [feature]
     || echo "[quorum] post to $project failed (non-fatal)" >&2
   return 0
 }
+
+# Task 0072: the twin of quorum_post for a decision gate — a `decision_request`
+# message carrying the task id and the bare question (never the Telegram-shaped
+# text quorum_post sends), so the app can render a real card with a reply box
+# and answer through the control plane's own decision endpoint. Same silent,
+# never-raising, always-0 tolerance.
+quorum_post_decision() { # project task_id question [feature]
+  local project="$1" task_id="$2" question="$3" feature="${4:-}" url body
+  [ -n "${QUORUM_CHAT_URL:-}" ] || return 0
+  [ -n "${QUORUM_PIPE_TOKEN:-}" ] || return 0
+  [ -n "$project" ] || return 0
+  if [ -n "$feature" ]; then
+    url="${QUORUM_CHAT_URL%/}/v1/chat/features/$project/$feature/messages"
+  else
+    url="${QUORUM_CHAT_URL%/}/v1/chat/projects/$project/messages"
+  fi
+  body="$(python3 -c 'import json,sys; print(json.dumps({"kind": "decision_request", "task_id": sys.argv[1], "question": sys.argv[2]}))' "$task_id" "$question")"
+  curl -fsS "$url" \
+    -H "Authorization: Bearer $QUORUM_PIPE_TOKEN" -H "Content-Type: application/json" \
+    --data-binary "$body" >/dev/null \
+    || echo "[quorum] decision post to $project failed (non-fatal)" >&2
+  return 0
+}
