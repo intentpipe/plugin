@@ -612,6 +612,49 @@ TELEGRAM_BOT_TOKEN=tok TELEGRAM_CHAT_ID=42 NOTIFY_SILENT=1 \
   "$INTENTPIPE/scripts/notify.sh" "quiet please" >/dev/null
 [ -s "$CURL_LOG" ] && fail "notify: NOTIFY_SILENT still hit telegram" || true
 
+
+# --- notify.sh Quorum leg (task 0071): the same text also reaches Quorum's
+# chat for the project — its feature channel when the text names one that
+# resolves, its project chat otherwise — attributed to the pipe token, never
+# the shared Telegram creds. Best-effort: absent config must not call out,
+# and NOTIFY_SILENT silences this leg too (loop.sh sets it exactly where
+# ask.sh already delivers the same news on both channels).
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
+  "$INTENTPIPE/scripts/notify.sh" "hello quorum" >/dev/null
+grep -q "http://quorum.example/v1/chat/projects/smoke/messages" "$CURL_LOG" \
+  || fail "notify: no quorum post to project chat"
+grep -q "Bearer pipe-tok" "$CURL_LOG" || fail "notify: quorum post missing pipe token"
+grep -q "hello quorum" "$CURL_LOG" || fail "notify: quorum post missing text"
+: > "$CURL_LOG"
+"$INTENTPIPE/scripts/notify.sh" "no quorum config here" >/dev/null
+[ -s "$CURL_LOG" ] && fail "notify: posted to quorum without config" || true
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok NOTIFY_SILENT=1 \
+  "$INTENTPIPE/scripts/notify.sh" "quiet please" >/dev/null
+[ -s "$CURL_LOG" ] && fail "notify: NOTIFY_SILENT still hit quorum" || true
+# a message naming a known feature (directly, or through a task that names
+# it) routes to that feature's channel instead of the project chat
+mkdir -p intentpipe/tasks/_features
+echo "# Amend flow" > intentpipe/tasks/_features/amend-flow.md
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
+  "$INTENTPIPE/scripts/notify.sh" "feature amend-flow: build finished" >/dev/null
+grep -q "http://quorum.example/v1/chat/features/smoke/amend-flow/messages" "$CURL_LOG" \
+  || fail "notify: known feature should route to its channel"
+mkdir -p intentpipe/tasks/9001-test-task
+printf 'Status: in-progress\nFeature: amend-flow\n' > intentpipe/tasks/9001-test-task/task.md
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
+  "$INTENTPIPE/scripts/notify.sh" "task 9001 update" >/dev/null
+grep -q "http://quorum.example/v1/chat/features/smoke/amend-flow/messages" "$CURL_LOG" \
+  || fail "notify: task naming a feature should route to that feature's channel"
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
+  "$INTENTPIPE/scripts/notify.sh" "feature does-not-exist: build finished" >/dev/null
+grep -q "http://quorum.example/v1/chat/projects/smoke/messages" "$CURL_LOG" \
+  || fail "notify: unknown feature should fall back to project chat"
+rm -rf intentpipe/tasks/9001-test-task intentpipe/tasks/_features/amend-flow.md
 # --- human-decision gate: a task marked `Decision: <question>` is asked on
 # Telegram (ask.sh posts the question + remembers message_id -> task), and
 # task.sh resolve folds the human's answer in and returns the task to todo.
@@ -623,6 +666,7 @@ lib "set_field '$gmd' Decision 'wilt over 7 days or 3?'"
 # ask.sh: stub curl to return a message_id, check the offer file records msg -> task
 cat > "$TMP/bin/curl" <<'EOF'
 #!/usr/bin/env bash
+printf '%s\n' "$*" >> "$CURL_LOG"
 echo '{"ok":true,"result":{"message_id":555}}'
 EOF
 chmod +x "$TMP/bin/curl"
@@ -631,6 +675,30 @@ TELEGRAM_BOT_TOKEN=tok TELEGRAM_CHAT_ID=42 TELEGRAM_TOPIC_ID=9 DECISION_OFFERS_F
   "$INTENTPIPE/scripts/ask.sh" "$newtmpl" "wilt over 7 days or 3?" >/dev/null
 python3 -c "import json,sys; o=json.load(open('$offers')); e=o['555']; sys.exit(0 if e['task']=='$newtmpl' and e['question']=='wilt over 7 days or 3?' else 1)" \
   || fail "ask.sh did not remember the decision offer (msg 555 -> task $newtmpl)"
+# ask.sh Quorum leg (task 0071): the same decision question also reaches
+# Quorum — the task's feature channel when it has one, else project chat —
+# independent of whether Telegram creds are present, and never posted
+# without QUORUM_CHAT_URL/QUORUM_PIPE_TOKEN configured.
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok TELEGRAM_BOT_TOKEN=tok TELEGRAM_CHAT_ID=42 \
+  DECISION_OFFERS_FILE="$offers" "$INTENTPIPE/scripts/ask.sh" "$newtmpl" "wilt over 7 days or 3?" >/dev/null
+grep -q "http://quorum.example/v1/chat/projects/smoke/messages" "$CURL_LOG" \
+  || fail "ask.sh: no quorum post for an unfeatured task's decision"
+grep -q "Bearer pipe-tok" "$CURL_LOG" || fail "ask.sh: quorum post missing pipe token"
+grep -q "wilt over 7 days or 3?" "$CURL_LOG" || fail "ask.sh: quorum post missing the question"
+: > "$CURL_LOG"
+TELEGRAM_BOT_TOKEN=tok TELEGRAM_CHAT_ID=42 DECISION_OFFERS_FILE="$offers" \
+  "$INTENTPIPE/scripts/ask.sh" "$newtmpl" "wilt over 7 days or 3?" >/dev/null
+grep -q "quorum.example" "$CURL_LOG" && fail "ask.sh: posted to quorum without config" || true
+grep -q "sendMessage" "$CURL_LOG" || fail "ask.sh: telegram leg must still fire without quorum config"
+featured=$("$INTENTPIPE/scripts/task.sh" new "Featured decision" app amend-flow2)
+fmd=$(echo intentpipe/tasks/"$featured"-*/task.md)
+lib "set_field '$fmd' Decision 'ship it?'"
+: > "$CURL_LOG"
+QUORUM_CHAT_URL=http://quorum.example QUORUM_PIPE_TOKEN=pipe-tok \
+  DECISION_OFFERS_FILE="$offers" "$INTENTPIPE/scripts/ask.sh" "$featured" "ship it?" >/dev/null
+grep -q "http://quorum.example/v1/chat/features/smoke/amend-flow2/messages" "$CURL_LOG" \
+  || fail "ask.sh: decision for a featured task should route to its feature channel"
 # resolve: fold the answer, clear the gate, back to todo
 "$INTENTPIPE/scripts/task.sh" resolve "$newtmpl" "flowers 3 days; dishes consumed" >/dev/null
 [ "$(lib "get_field '$gmd' Decision")" = "-" ] || fail "resolve did not clear the Decision gate"
