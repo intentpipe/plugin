@@ -11,6 +11,11 @@
 # independent of Telegram creds and never affecting this script's own
 # tolerance. Quorum has no reply-routing of its own: the human still answers
 # on Telegram, task.sh resolve folds it in either way.
+#
+# Task 0072: that post is a `decision_request` message, not `text` — it
+# carries the task id and the bare question, so Quorum renders a real card
+# with a reply box that answers through the control plane's own decision
+# endpoint (`POST .../tasks/{id}/decision`), same `task.sh resolve` underneath.
 set -euo pipefail
 id="${1:?usage: ask.sh <task-id> <question>}"
 question="${2:?usage: ask.sh <task-id> <question>}"
@@ -43,7 +48,7 @@ $question
 Reply to this message to decide."
 
 feature="$(quorum_feature_for_task "$ws" "$id" 2>/dev/null || true)"
-quorum_post "$name" "$text" "$feature"
+quorum_post_decision "$name" "$id" "$question" "$feature"
 
 if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
   echo "[ask] no telegram creds — printed only, no reply-routing" >&2
