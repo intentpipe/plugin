@@ -34,10 +34,15 @@
 # xhigh|max, unset/unknown → medium) sets the implementer session's reasoning depth,
 # and EFFORT= pins it for the run. Medium is the default because the reviewer runs
 # at high regardless (agents/reviewer.md) and catches what a cheaper pass misses.
+# (The agent-frontmatter `effort:` key was undocumented at CLI 2.1.263; if it is
+# ignored the reviewer inherits the session's effort — check a reviewer
+# transcript before relying on it.)
 # Every finished task reports what it cost in BOTH currencies — dollars (real, or
 # API-equivalent on a subscription) and tokens — plus a per-step wall-clock
 # breakdown (preflight / llm / verify / smoke) collected in tasks/<id>/timings.tsv
 # by the scripts themselves. Both are recorded into task.md (Cost:, Timing:).
+# Not built: token accounting inside interactive sessions — the CLI exposes
+# usage only in this headless JSON output.
 # Usage: MODEL=opus ORCH_MODEL=opus EFFORT=medium MAX_TASKS=5 MAX_COST_USD=15 MAX_RESUME=3 MAX_RETRIES=10 RETRY_BACKOFF=60 LIMIT_BACKOFF=1800 MAX_LIMIT_RETRIES=6 UPSTREAM_BACKOFF=1800 CONTINUE_ON_BLOCK=0 loop.sh
 set -euo pipefail
 SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -229,6 +234,10 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
     # ran, so `llm` is the model's own work (implement + review) and the rows in
     # timings.tsv stay non-overlapping — their sum is the task's real total.
     sess_t0=$(date +%s); scripted_before=$(timing_total "$id")
+    # No --max-turns on purpose: a task that genuinely needs 200 turns should get
+    # them; size is the lever, and it is pulled at plan time. Timers are
+    # disallowed because a headless orchestrator has nothing to wait for that a
+    # synchronous Agent call does not already wait for (see ORCH_MODEL above).
     out=$(claude -p "$prompt" \
           ${sid:+--resume "$sid"} \
           --model "$ORCH_MODEL_ARG" \

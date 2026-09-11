@@ -19,6 +19,8 @@ WS="$(find_workspace)"
 # shellcheck disable=SC1091
 source "$WS/agents.env"
 : "${DEFAULT_BRANCH:=main}"
+# Declared, never sniffed from an origin remote: a solo project may push for
+# backup, and guessing would silently change merge semantics.
 : "${DONE:=local}"   # local = squash-merge | pr = push branch + GitHub PR
 : "${REPOS:?agents.env must set REPOS}"
 TASKS="$WS/tasks"
@@ -36,6 +38,9 @@ verify_cmd() { # verify_cmd <name> -> command string
 
 smoke_cmd() { # smoke_cmd <name> -> command string, empty when the repo defines none
   # Optional (`:-`), unlike verify_cmd's `:?`: most repos have nothing to boot.
+  # Declared, never auto-detected: the plugin cannot know which service is the
+  # app or which endpoint proves readiness, and a wrong guess either hangs the
+  # gate or greenlights a dying app.
   local var="SMOKE_$1"
   echo "${!var:-}"
 }
