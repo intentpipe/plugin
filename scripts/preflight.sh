@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Validate the workspace before any agent runs. Fail loud, fail early.
+# Config is verified, not assumed: agents.env names repos generically (REPOS=…),
+# so any topology works, and nothing runs until it checks out.
 # Usage: preflight.sh [--quick]   (--quick skips the verify run)
 # Exit 3 (DONE=pr): origin/DEFAULT_BRANCH itself is red — an environment
 # condition to wait out (loop.sh retries), not a workspace failure.
@@ -27,7 +29,7 @@ for repo in $REPOS; do
   git -C "$path" rev-parse -q --verify "$DEFAULT_BRANCH" >/dev/null \
     || { echo "FAIL: $repo has no branch $DEFAULT_BRANCH" >&2; err=1; }
   if [ "$DONE" = "pr" ]; then
-    # Base freshening moved to plan kickoff (freshen.sh, decision #29) so a build
+    # Base freshening happens at plan kickoff (freshen.sh) so a build
     # run never advances the default branch mid-flight — no repo is yanked onto a
     # moved base while a PR is open. Preflight only validates origin and fetches
     # the ref the upstream-red check (below) and task.sh sync compare against.

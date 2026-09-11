@@ -5,7 +5,7 @@ disable-model-invocation: true
 argument-hint: "[headless]"
 ---
 
-Improve the pipeline from evidence. You may NOT edit the intentpipe plugin — you write proposals; the human applies them in the intentpipe repo.
+Improve the pipeline from evidence. You may NOT edit the intentpipe plugin — you write proposals; the human applies them in the intentpipe repo. Unsupervised prompt self-editing degrades a pipeline (slop accumulates, goals drift), so prompt changes are release-engineered like code, and a hook physically blocks writes into the plugin.
 
 Headless mode — when $ARGUMENTS contains `headless` (Telegram-triggered, nobody at a terminal): never prompt. Work exactly as below; step 6's report goes to stdout only — when this run finishes, the orchestrator daemon reads the new files in `intentpipe/retro/` and posts each proposal into the project's topic, where a reaction applies it (a headless run in the intentpipe repo that makes the proposed change and opens a PR). The human gate is the reaction plus the PR merge.
 

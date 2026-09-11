@@ -6,6 +6,10 @@
 # Opt-in: the skill only calls this when LINEAR_TEAM_KEY is set. Requires
 # LINEAR_API_KEY (shared, in ~/.agent-orchestrator/linear.env or the env) and
 # LINEAR_TEAM_KEY (per-project, in agents.env). Errors loudly, never a no-op.
+# One-directional (plan → issue → PRs): no status sync back, no sub-issue per
+# task — a drifting mirror of task state is worse than none. The key rides the
+# feature slug (feature/eng-123-<slug>) so every PR auto-links via Linear's
+# containment match, with zero change to task.sh.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"   # → agents.env (LINEAR_TEAM_KEY)
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Freshen the base at plan kickoff (DONE=pr): fetch origin/DEFAULT_BRANCH and
 # move every clean repo onto it, so tasks planned this run branch from current
-# upstream. Base advances here, once, not per-build (decision #29, amends #18) —
-# so a build run never yanks a repo onto a moved default branch while a PR is
-# open. A repo with uncommitted changes is reported and left as-is, never
+# upstream. Base advances here, once, not per-build — so a build run never
+# yanks a repo onto a moved default branch while a PR is open (a stable base
+# beats an always-latest one; the cost, a later feature not seeing an earlier
+# same-run PR, is the stacked-PR limit /build already stops on). A resumed
+# task branch gone stale against the moved base is NOT rebased here —
+# mechanical salvage is the wrong tool; replan it through /plan. A repo with uncommitted changes is reported and left as-is, never
 # clobbered; a dangling task branch is left intact (git checkout, not delete).
 # No-op under DONE=local (no upstream to freshen). Never fails its caller:
 # planning proceeds; preflight still validates before any build.
