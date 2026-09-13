@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Implements exactly one task from intentpipe/tasks/ end-to-end (tests + code, all affected repos). Spawned by /intentpipe:build with a task id.
+description: Implements exactly one task from intentpipe/tasks/ end-to-end (tests + code) across every repo it spans — one implementer per task, never a frontend/backend pair, which drifts on the API contract. Spawned by /intentpipe:build with a task id.
 model: inherit
 memory: project
 ---

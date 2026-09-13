@@ -35,7 +35,7 @@ BASH_DENY = [
     (r"\bsed\s+(-\S+\s+)*-i\b.*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
 ]
 
-# Only under DONE=pr, where the platform is the merge arbiter (DESIGN #18): a
+# Only under DONE=pr, where the platform is the merge arbiter: a
 # hand-push of the default branch there lands work that skipped review. Under
 # DONE=local the pipeline publishes that branch itself (publish.sh, #42), so
 # pushing it is the normal flow, not an offence.
@@ -77,7 +77,9 @@ def without_prose(cmd: str) -> str:
 def done_mode(cwd: str) -> str:
     """DONE from the workspace's agents.env — lib.sh's find_workspace walk, in
     Python. No workspace (a plugin dev session, a stray dir) means lib.sh's own
-    default: local."""
+    default: local. Fail-open is deliberate and small: the mode comes from a file
+    the pipeline itself writes, and a guard that blocked every push it could not
+    classify would break the plugin's own repo."""
     d = os.path.realpath(cwd)
     while True:
         for env in (os.path.join(d, "agents.env"), os.path.join(d, "intentpipe", "agents.env")):

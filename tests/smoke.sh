@@ -191,7 +191,7 @@ grep -q "Status: done" "$d3/task.md" || fail "id3 not done after merge"
 git -C app log -1 --format=%B | grep -q "Task-Id: $id3" || fail "id3 merge missing trailer"
 
 # --- task.sh nits: read-only digest of [nit] findings from DONE tasks — the one
-# triage point /plan reads (nits never re-loop inside a build, DESIGN #5)
+# triage point /plan reads (nits never re-loop inside a build)
 printf '## Round 1\n[nit] app/third.txt:1 — stale comment survives — cosmetic\nVERDICT: approve\n' > "$d3/review.md"
 nout=$("$INTENTPIPE/scripts/task.sh" nits)
 echo "$nout" | grep -q "$id3 \[nit\] app/third.txt:1" || fail "nits must list a done task's nit, id-prefixed: $nout"

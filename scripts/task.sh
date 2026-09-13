@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Task lifecycle. Deterministic — no LLM involved.
+# tasks/ is the single source of truth: Status lives in each task.md, _log.md is
+# the bounded one-line digest, and every transition hits disk before the next
+# step — so a crash resumes for free and there is no separate list to drift.
+# Folders are NNNN-slug, not commit names: the hash does not exist until after
+# the work; the commit's Task-Id trailer links back the other way.
 # Usage: task.sh new "<title>" [repos] [feature] | start <id> | next | status | diagnose | nits | done <id> | sync | block <id> "<reason>" | reopen <id> | abandon <id> | clean-repo <repo> | resolve <id> "<decision>"
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -109,6 +114,9 @@ cmd_next() {
   # gates the same way but needs a human, so stop and signal (exit 3) rather than
   # hand it back. Todos *before* a block still run; CONTINUE_ON_BLOCK=1 skips past
   # it for independent task sets.
+  # Not built: multi-user claiming (an Owner: field + optimistic push of the
+  # workspace repo, merge=union for the append-only files) — when a second
+  # plugin user exists.
   local d s
   for d in "$TASKS"/[0-9]*/; do
     [ -f "$d/task.md" ] || continue
@@ -123,7 +131,8 @@ cmd_next() {
 }
 
 cmd_nits() { # every [nit] from a done task's review, newest task first. The
-  # disposal channel for DESIGN #5: nits are never re-looped inside a build, so
+  # disposal channel: nits are never re-looped inside a build (only blocking
+  # findings are, twice at most — review converges by construction), so
   # /plan is the only place they get triaged into work or dropped on purpose.
   local d md id
   for d in $(ls -dr "$TASKS"/[0-9]*/ 2>/dev/null); do
@@ -265,6 +274,9 @@ feature_body() { # <slug> <1|0 include reviews> → aggregated PR body on stdout
 
 ship_feature() { # all member tasks landed → push feature/<slug>, open one PR
   # per repo with the aggregated task contracts + reviews; sync completes it.
+  # Task = commit granularity, feature = review granularity: one PR per task
+  # floods a team repo with micro-PRs. Grouping is decided in /plan (it is
+  # decomposition judgment) and approved with the plan.
   local slug="$1" fmd branch tid d repo path repos="" url urls="" body cut
   fmd=$(feature_md "$slug"); branch="feature/$slug"
   body=$(mktemp)
@@ -385,6 +397,9 @@ cmd_done() {
   fi
   # Squash-merge into $target: DEFAULT_BRANCH (DONE=local), or the feature
   # integration branch (DONE=pr + Feature) — one commit per task either way.
+  # The implementer commits freely on the branch (that is the red/green cadence
+  # the loop converges on); the single commit is presentation, and its Task-Id
+  # trailer links it back to the task folder.
   for repo in $(get_field "$md" Repos); do
     path=$(repo_path "$repo")
     git -C "$path" checkout -q "$target"
@@ -501,6 +516,9 @@ cmd_sync() {
 }
 
 cmd_block() {
+  # Escalation is a designed exit: an autonomous loop without one thrashes.
+  # Repos are left on the task branch on purpose — blocked WIP is committed and
+  # a human inspects it there; cmd_next's gate stops the cascade to dependents.
   local id="${1:?task id}" reason="${2:?reason}" dir md
   dir=$(task_dir "$id"); md="$dir/task.md"
   set_field "$md" Status blocked

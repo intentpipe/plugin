@@ -16,7 +16,7 @@
 # reconciling someone else's history is a human's call, not a script's.
 #
 # DONE=pr workspaces are skipped outright — there the platform is the merge
-# arbiter (DESIGN #18) and hand-pushing the default branch bypasses review.
+# arbiter and hand-pushing the default branch bypasses review.
 #
 # Usage: publish.sh [repo...]   (run from anywhere below the project root)
 set -euo pipefail

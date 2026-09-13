@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Fresh-context adversarial review of one task's diff against its acceptance criteria. Spawned by /intentpipe:build after implementation.
+description: Fresh-context adversarial review of one task's diff against its acceptance criteria — a fresh critic beats self-review, and it runs on opus at high effort whatever the implementer's model, because a cheap reviewer is how bugs ship. Spawned by /intentpipe:build after implementation.
 model: opus
 effort: high
 memory: project

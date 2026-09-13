@@ -4,6 +4,9 @@
 # actually starts and answers. Unit tests can't see a startup path (a migration
 # that fails on existing data, a bad env var, an import error at boot), so a
 # repo that ships a runnable app should define one.
+# Hierarchy of trust: compiler/tests >> fresh-context reviewer >> LLM-as-judge
+# (never built as a gate — the weakest verifier class). The implementer may not
+# weaken a test to get green, and the reviewer checks for it.
 # Usage: verify.sh [--no-smoke] [repo ...]   (default: all repos, smoke on)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -33,7 +36,7 @@ run_reaped() { # run_reaped <cmd ...> -> the command's exit code
 # Test runners are chatty, and on a green run none of that transcript is
 # evidence the PASS line doesn't already carry. It isn't free: the implementer
 # runs verify after every meaningful change (agents/implementer.md rule 4), the
-# output lands in its context, and every later turn re-pays it (DESIGN #38/#42).
+# output lands in its context, and every later turn re-pays it.
 # So a piped caller gets one summary line on green and the tail on red — the
 # full log stays on disk, named, for when the tail isn't enough. A human at a
 # terminal still watches it all scroll, which is why they ran it by hand.

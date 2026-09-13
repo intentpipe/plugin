@@ -1,6 +1,6 @@
 # Intentpipe repo (plugin development)
 
-You are editing intentpipe itself, not using it. Read `DESIGN.md` before changing behavior — every decision there has a reason.
+You are editing intentpipe itself, not using it. The reason for every non-obvious behavior is a comment next to the line that implements it — read it before changing the line, and when you add a non-obvious line, put its why beside it.
 
 Rules:
 - Concision is a feature: agent/skill prompts earn every line ("would removing this cause a mistake?"). CLAUDE.mds < 200 lines.
