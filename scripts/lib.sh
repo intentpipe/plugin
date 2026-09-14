@@ -36,6 +36,15 @@ verify_cmd() { # verify_cmd <name> -> command string
   echo "${!var:?agents.env must set VERIFY_$1}"
 }
 
+test_cmd() { # test_cmd <name> -> command string, empty when the repo defines none
+  # Optional: the runner that takes test paths as arguments (`flutter test`,
+  # `uv run pytest -q`), for the inner loop's targeted runs. Declared, never
+  # derived from VERIFY_<name>: that string bundles codegen, lint and the whole
+  # suite, and no parser can tell which token accepts a path.
+  local var="TEST_$1"
+  echo "${!var:-}"
+}
+
 smoke_cmd() { # smoke_cmd <name> -> command string, empty when the repo defines none
   # Optional (`:-`), unlike verify_cmd's `:?`: most repos have nothing to boot.
   # Declared, never auto-detected: the plugin cannot know which service is the
