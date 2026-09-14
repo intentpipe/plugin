@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 """Where a build session's time and tokens went — per agent, per round.
 
-task.md's `Cost:` and `Timing:` fields are totals, and a total hides the thing
-that matters: tyf 0072 changed two strings in 41m / 9.7M tokens, and the totals
-could not say that the implementer was done in 3 minutes, that an opus review
-demanded a widget test, or that the orchestrator sat in two 10-minute polling
-loops while the implementer had already stopped. This reads the Claude Code
-transcripts the CLI writes for the session and says exactly that.
+task.md's `Cost:` and `Timing:` fields are totals; a total cannot say which
+agent, which round, or which wait consumed a task. This reads the Claude Code
+transcripts the CLI writes for the session and splits the totals that way.
 
   ~/.claude/projects/<cwd-slug>/<session>.jsonl              orchestrator
   ~/.claude/projects/<cwd-slug>/<session>/subagents/*.jsonl  implementer, reviewer, Explore
 
 One row per agent ROUND: a subagent transcript is split at every message the
-orchestrator sent it (the first prompt, then each SendMessage resume), because
-"round 2 cost 2x round 1 and then idled 12 minutes" is the finding, and a
-per-agent sum would flatten it. Rows carry:
+orchestrator sent it (the first prompt, then each resume), since rounds differ
+in cost and a per-agent sum would hide that. Rows carry:
 
   req      API requests (deduped on requestId — a resumed session copies its
            predecessor's history into the new file)

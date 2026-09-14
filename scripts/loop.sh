@@ -447,11 +447,9 @@ else:
   timing=$(timing_summary "$id")
   total_secs=$((total_secs + $(timing_total "$id")))
   set_field "$dir/task.md" Timing "${timing:--}"
-  # Cost/Timing are totals; where the time and tokens actually went — which
-  # agent, which review round, a 10-minute poll loop while the implementer had
-  # already stopped, a context re-uploaded after idling — is anatomy.py's job,
-  # read off the session transcripts. Session: keeps the ids so it can be
-  # re-run by hand (tasks/<id>/task.md → ~/.claude/projects/…). Never fatal.
+  # Cost/Timing are totals; anatomy.py splits them per agent, round and wait
+  # from the session transcripts. Session: keeps the ids so it can be re-run
+  # by hand. Never fatal.
   set_field "$dir/task.md" Session "${sids:--}"
   anatomy=""
   if [ -n "$sids" ]; then
