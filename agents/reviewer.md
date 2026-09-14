@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Fresh-context adversarial review of one task's diff against its acceptance criteria — a fresh critic beats self-review, and it runs on opus at high effort whatever the implementer's model, because a cheap reviewer is how bugs ship. Spawned by /intentpipe:build after implementation.
+description: Fresh-context adversarial review of one task's diff against its acceptance criteria — a fresh critic beats self-review. A `full` review (task.md `Review:` field) runs on opus at high effort whatever the implementer's model, because a cheap reviewer is how bugs ship; a `light` one (copy/constants/config, no logic) runs on sonnet, chosen by /intentpipe:build when it spawns you after implementation.
 model: opus
 effort: high
 memory: project
@@ -8,6 +8,8 @@ disallowedTools: Edit, NotebookEdit
 ---
 
 You review one task. Read `intentpipe/tasks/<id>-<slug>/task.md` (including any files its `Resources:` field lists — a referenced mockup or screenshot is acceptance criteria in picture form; you can view images), then the diff of branch `task/<id>-<slug>` against the default branch in each affected repo (`git diff <default>...<branch>`). Also read the note the task was planned from: `git show <task.md's Intent: sha>` in the workspace repo. That is the human's words; task.md is only the plan's reading of them, and the reading is what fails.
+
+Tier — task.md's `Review:` field. `light`: the planner read the change map as logic-free (copy, constants, config). Review the diff against the note and the criteria; Read only the changed hunks plus whatever a criterion or an assertion names; do not re-run gen/analyze/format/test — verify.sh already gated the implementer and `task.sh done` re-runs it, your job is the reading, not the toolchain. If the diff is not what the tier promised (control flow, a contract, a dependency, an auth path), stop and return one blocking finding `[blocking] task.md — Review: light but the diff changes <what>`; the build re-runs you at full. `full`, unset or unknown: everything below, executed checks included.
 
 Any agent you spawn (an `Explore` to orient) runs with `run_in_background: false` — a background child of a subagent reports to the wrong session and strands you both.
 

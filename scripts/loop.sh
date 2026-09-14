@@ -32,8 +32,10 @@
 # override — and either way the session never silently falls back to a cheaper
 # default. Effort works the same way: the planner's Effort: field (low|medium|high|
 # xhigh|max, unset/unknown → medium) sets the implementer session's reasoning depth,
-# and EFFORT= pins it for the run. Medium is the default because the reviewer runs
-# at high regardless (agents/reviewer.md) and catches what a cheaper pass misses.
+# and EFFORT= pins it for the run. Medium is the default because a full review runs
+# at high regardless (agents/reviewer.md) and catches what a cheaper pass misses;
+# the planner's Review: light (copy/constants/config) puts the reviewer on sonnet
+# instead — the build skill reads that field itself, loop.sh does not pass it.
 # (The agent-frontmatter `effort:` key was undocumented at CLI 2.1.263; if it is
 # ignored the reviewer inherits the session's effort — check a reviewer
 # transcript before relying on it.)

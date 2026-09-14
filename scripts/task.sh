@@ -64,6 +64,7 @@ Decision: -
 Resources: -
 Model: -
 Effort: -
+Review: -
 
 ## Goal
 
@@ -132,8 +133,10 @@ cmd_next() {
 
 cmd_nits() { # every [nit] from a done task's review, newest task first. The
   # disposal channel: nits are never re-looped inside a build (only blocking
-  # findings are, twice at most — review converges by construction), so
-  # /plan is the only place they get triaged into work or dropped on purpose.
+  # findings are, twice at most — review converges by construction), and /plan
+  # never folds them into a note's task (a nit carried forward is a claim about
+  # code that may have moved since). /cleanup is the only consumer: it re-verifies
+  # each nit against the current tree and drops the ones whose premise is gone.
   local d md id
   for d in $(ls -dr "$TASKS"/[0-9]*/ 2>/dev/null); do
     md="$d/task.md"; [ -f "$md" ] || continue

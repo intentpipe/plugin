@@ -824,6 +824,7 @@ t5=$("$INTENTPIPE/scripts/task.sh" new "Sonnet task")
 t5md=$(ls intentpipe/tasks/"$t5"-*/task.md)
 grep -q '^Model: -' "$t5md" || fail "task.sh new must stamp a Model field"
 grep -q '^Effort: -' "$t5md" || fail "task.sh new must stamp an Effort field"
+grep -q '^Review: -' "$t5md" || fail "task.sh new must stamp a Review field (tier read by the build skill)"
 lib "set_field $t5md Model sonnet"
 : > "$TMP/claude-args.log"
 PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u MODEL -u EFFORT \
