@@ -1,6 +1,6 @@
 # Intentpipe repo (plugin development)
 
-You are editing intentpipe itself, not using it. The reason for every non-obvious behavior is a comment next to the line that implements it — read it before changing the line, and when you add a non-obvious line, put its why beside it.
+You are editing intentpipe itself, not using it. In `scripts/`, the reason for every non-obvious line is a comment beside it — read it before changing the line, and when you add one, put its why beside it. In `agents/` and `skills/` the model re-reads every word on every request: prompts state rules only — no reasons, no incident history, no description of mechanisms the model does not act on. The why goes in the commit message.
 
 Rules:
 - Concision is a feature: agent/skill prompts earn every line ("would removing this cause a mistake?"). CLAUDE.mds < 200 lines.
