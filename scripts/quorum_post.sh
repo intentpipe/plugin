@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Best-effort fan-out into Quorum chat — the plugin-side twin of the
-# orchestrator's quorum_report.py (task 0071). Sourced by notify.sh and
+# orchestrator's quorum_report.py. Sourced by notify.sh and
 # ask.sh; defines functions only, never executes anything on its own.
 #
 # Config lives beside the Telegram block, in the same box-wide file:
@@ -70,7 +70,7 @@ quorum_post() { # project text [feature]
   return 0
 }
 
-# Task 0072: the twin of quorum_post for a decision gate — a `decision_request`
+# The twin of quorum_post for a decision gate — a `decision_request`
 # message carrying the task id and the bare question (never the Telegram-shaped
 # text quorum_post sends), so the app can render a real card with a reply box
 # and answer through the control plane's own decision endpoint. Same silent,

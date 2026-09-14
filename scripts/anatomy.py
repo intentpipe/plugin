@@ -25,7 +25,7 @@ in cost and a per-agent sum would hide that. Rows carry:
   idle     the gap between this round's end and the next resume message —
            time the agent sat stopped while the orchestrator waited on it
 
-Plus the longest tool calls (a 600s `sleep` loop shows up here, an Agent call
+Plus the longest tool calls (a polling loop shows up here, an Agent call
 does not — its duration is its child's row) and every verify.sh invocation
 with who ran it and how long it took.
 

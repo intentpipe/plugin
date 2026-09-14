@@ -126,7 +126,7 @@ after_done() { # after_done <branch>: fire the optional AFTER_DONE hook for work
   # that just landed on <branch> (the PR branch, the feature branch it integrates
   # into, or DEFAULT_BRANCH under DONE=local).
   #
-  # Declared per workspace in agents.env, never auto-detected (#17/#33): what a
+  # Declared per workspace in agents.env, never auto-detected: what a
   # project does when a task lands — refresh a preview onto the branch, deploy,
   # ping a webhook — is not something the plugin can know or should. The seam is
   # the same shape as notify.sh: a command the workspace names, run DETACHED and
@@ -146,8 +146,8 @@ after_done() { # after_done <branch>: fire the optional AFTER_DONE hook for work
   fi
   log="$TASKS/_after-done.log"
   # A hook's output is diagnostic, not a record: keep the last few runs, not
-  # every run since the workspace was born (it was 230 KB on quorum, committed
-  # and re-diffed by every state landing).
+  # every run since the workspace was born — the file is committed and
+  # re-diffed by every state landing.
   if [ -f "$log" ] && [ "$(wc -l < "$log")" -gt 400 ]; then
     { tail -n 200 "$log" > "$log.tmp" && mv "$log.tmp" "$log"; } 2>/dev/null || true
   fi

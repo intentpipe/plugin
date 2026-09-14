@@ -2,9 +2,8 @@
 # Publish the merged default branch: push DEFAULT_BRANCH to origin for the named
 # repos (all REPOS when none are named). Under DONE=local the squash-merge in
 # task.sh done IS the terminal state, so without this a green task never leaves
-# the box — bibbles ran three tasks deep (0133-0135) with origin/main stale
-# behind local main, discovered only because a human went looking. Publishing is
-# the second half of a local merge, not a separate ceremony.
+# the box and origin goes silently stale. Publishing is the second half of a
+# local merge, not a separate ceremony.
 #
 # Tolerant by design, same seam contract as notify.sh and state-land.sh: this
 # must never fail the task that already merged green. Every skip prints a reason

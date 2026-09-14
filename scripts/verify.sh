@@ -15,9 +15,8 @@ smoke=1
 [ "${1:-}" != "--no-smoke" ] || { smoke=0; shift; }
 
 run_reaped() { # run_reaped <cmd ...> -> the command's exit code
-  # Test runners fork workers that outlive them — every `flutter test` left a
-  # flutter_tester behind, and they piled up across days until a 4G box hit a
-  # 6.2G memory / 1.8G swap peak, slowing every later build. `set -m` puts the
+  # Test runners fork workers that outlive them, and the survivors accumulate
+  # across runs until the box swaps. `set -m` puts the
   # run in its own process group (pgid = $!, guaranteed by bash — no setsid, no
   # racy `ps` lookup), so once it returns the survivors are addressable as a
   # group and get reaped. A failing TERM means nothing survived: the good case.

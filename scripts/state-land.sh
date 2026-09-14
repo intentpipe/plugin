@@ -100,7 +100,7 @@ fi
 
 if (cd "$root" && gh pr merge "$land" --merge >/dev/null 2>&1); then
   # "merged" is gh's claim about a PR, not proof that these commits reached
-  # "$base" — check before saying so, or stranded state stays silent again.
+  # "$base" — check before saying so, or stranded state stays silent.
   git -C "$root" fetch -q origin "$base" \
     || { say "merged $url but could not re-fetch to verify — check origin/$base"; exit 0; }
   left=$(git -C "$root" rev-list --count "origin/$base..HEAD")

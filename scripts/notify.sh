@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Notify the human — the single seam for human comms. Always prints; adds a
 # macOS notification (Darwin), a Telegram message when creds are set, and
-# (task 0071) the same text into Quorum's chat for the project — its
+# the same text into Quorum's chat for the project — its
 # feature channel when the text names one that resolves, its project chat
 # otherwise. Tolerant by design: never fails its caller, on either leg.
 # Files first (NEEDS_HUMAN.md is the record; this is the side channel). Telegram,
