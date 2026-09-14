@@ -14,8 +14,11 @@ Headless mode — when $ARGUMENTS contains `headless`: never prompt; step 5's su
 `${CLAUDE_PLUGIN_ROOT}/scripts/notify.sh` as well as stdout.
 
 1. Read intentpipe/agents.env (`REPOS`). Find the last cleanup note (`git log --oneline --
-   intentpipe/updates/` for `cleanup-`); skim `tasks/*/review.md` nits since then —
-   duplication/dead-code nits are pre-verified leads.
+   intentpipe/updates/` for `cleanup-`); run `${CLAUDE_PLUGIN_ROOT}/scripts/task.sh nits` and
+   take the nits from tasks done since then. You are the only consumer of nits (/plan never folds
+   them into a task): each is a lead, not a finding — re-verify it against the current tree first,
+   since the code may have moved since the review, and drop a nit whose premise is gone rather
+   than carrying it. Survivors are candidates like any other in step 2.
 2. Sweep each repo for: symbols with zero readers outside their own definition; near-identical
    logic at ≥2 call sites worth one shared helper; parallel variants of the same UI concept (two
    sheets/cards/pickers that should be one widget — a finding like any other; a variant that looks
