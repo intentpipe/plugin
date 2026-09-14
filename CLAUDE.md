@@ -4,6 +4,7 @@ You are editing intentpipe itself, not using it. In `scripts/`, the reason for e
 
 Rules:
 - Concision is a feature: agent/skill prompts earn every line ("would removing this cause a mistake?"). CLAUDE.mds < 200 lines.
+- A prompt rule describes current behavior only: never what it replaced, what used to go wrong, or what a script "used to" do.
 - Mechanics belong in `scripts/` (deterministic), judgment in `agents/`/`skills/` (LLM). Never move logic from script to prompt.
 - After editing scripts: `bash -n` them and run the smoke test in `tests/smoke.sh`.
 - Changes motivated by a project retro should reference the proposal file in the commit message.
