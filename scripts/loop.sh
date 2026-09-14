@@ -225,7 +225,7 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
     fi
   fi
   echo "Solving task with $(echo "$task_model" | tr '[:lower:]' '[:upper:]') at effort $task_effort (orchestrator: $ORCH_MODEL)"
-  resume=0; task_cost=0; task_in=0; task_out=0; fail_reason=""; prompt="$BUILD_SKILL $id model=$task_model"; sid=""
+  resume=0; task_cost=0; task_in=0; task_out=0; fail_reason=""; prompt="$BUILD_SKILL $id model=$task_model"; sid="" sids=""
   # INTENTPIPE_TIMING_ID pins every script the session runs (preflight/verify) to this
   # task's timings.tsv, whatever its Status has become by then.
   export INTENTPIPE_TIMING_ID="$id"
@@ -260,7 +260,7 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
     # resuming the last session that produced one still beats starting over.
     # (--resume forks to a new id, so each attempt re-captures.)
     newsid=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("session_id") or "")' 2>/dev/null) || newsid=""
-    [ -n "$newsid" ] && sid="$newsid"
+    [ -n "$newsid" ] && { sid="$newsid"; sids="$sids${sids:+ }$newsid"; }   # every attempt, for anatomy.py
     dir=$(task_dir "$id"); status=$(get_field "$dir/task.md" Status)
     if [ "$rc" -ne 0 ] && [ "$status" != "done" ] && [ "$status" != "pr" ] \
        && wait=$(limit_wait "$out"$'\n'"$(cat "$errf")"); then
@@ -447,6 +447,21 @@ else:
   timing=$(timing_summary "$id")
   total_secs=$((total_secs + $(timing_total "$id")))
   set_field "$dir/task.md" Timing "${timing:--}"
+  # Cost/Timing are totals; where the time and tokens actually went — which
+  # agent, which review round, a 10-minute poll loop while the implementer had
+  # already stopped, a context re-uploaded after idling — is anatomy.py's job,
+  # read off the session transcripts. Session: keeps the ids so it can be
+  # re-run by hand (tasks/<id>/task.md → ~/.claude/projects/…). Never fatal.
+  set_field "$dir/task.md" Session "${sids:--}"
+  anatomy=""
+  if [ -n "$sids" ]; then
+    # shellcheck disable=SC2086  # sids is a space-separated list on purpose
+    python3 "$SCRIPTS/anatomy.py" --cwd "$PWD" --session $sids > "$dir/anatomy.md" 2>/dev/null || true
+    # shellcheck disable=SC2086
+    anatomy=$(python3 "$SCRIPTS/anatomy.py" --cwd "$PWD" --session $sids --compact 2>/dev/null) || anatomy=""
+    case "$anatomy" in anatomy:*) anatomy="" ;; esac   # "no transcript" note, not a summary
+  fi
+  set_field "$dir/task.md" Anatomy "${anatomy:--}"
   if [ -n "$SUBSCRIPTION" ]; then
     set_field "$dir/task.md" Cost "subscription (~\$$task_cost API-equiv, $toks)"
     echo "── task $id → $status ($n/$MAX_TASKS; subscription; ~\$$task_cost API-equiv; $toks_detail)"
@@ -455,6 +470,7 @@ else:
     echo "── task $id → $status ($n/$MAX_TASKS; \$$task_cost; $toks_detail)"
   fi
   [ -z "$timing" ] || echo "   timing: $timing"
+  [ -z "$anatomy" ] || echo "   anatomy: $anatomy"
   if [ -z "$SUBSCRIPTION" ] && python3 -c "exit(0 if $total_cost >= $MAX_COST_USD else 1)"; then
     "$SCRIPTS/notify.sh" "loop.sh stopped: cost cap \$$MAX_COST_USD reached"
     break

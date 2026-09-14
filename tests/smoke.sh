@@ -796,14 +796,43 @@ sleep 1
 # Top-level usage is the orchestrating thread's last wake only; modelUsage is
 # every model incl. subagents. The report must sum modelUsage (1840k in / 12k
 # out here), and a regression to \`usage\` (258k in / 1k out) is loud.
-echo '{"total_cost_usd": 0.42, "usage": {"input_tokens": 0, "cache_creation_input_tokens": 4590, "cache_read_input_tokens": 253491, "output_tokens": 1000}, "modelUsage": {"claude-opus-5": {"inputTokens": 12000, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 628000, "outputTokens": 5500}, "claude-sonnet-5": {"inputTokens": 0, "cacheCreationInputTokens": 88000, "cacheReadInputTokens": 1112000, "outputTokens": 6000}}}'
+echo '{"session_id": "smoke-sess-1", "total_cost_usd": 0.42, "usage": {"input_tokens": 0, "cache_creation_input_tokens": 4590, "cache_read_input_tokens": 253491, "output_tokens": 1000}, "modelUsage": {"claude-opus-5": {"inputTokens": 12000, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 628000, "outputTokens": 5500}, "claude-sonnet-5": {"inputTokens": 0, "cacheCreationInputTokens": 88000, "cacheReadInputTokens": 1112000, "outputTokens": 6000}}}'
 EOF
 chmod +x "$TMP/bin/claude"
 cd "$WS4"
 t4=$("$INTENTPIPE/scripts/task.sh" new "Reported task")
+# The per-agent breakdown (anatomy.py) is read off the session transcripts the
+# CLI writes under ~/.claude/projects/<cwd-slug>/ — planted here under a
+# private root: an orchestrator with one Bash call, and an implementer
+# subagent that was resumed once (two rounds, 6 minutes idle between them).
+TR="$TMP/transcripts/$(python3 -c 'import re,sys; print(re.sub(r"[^A-Za-z0-9]", "-", sys.argv[1]))' "$WS4")"
+mkdir -p "$TR/smoke-sess-1/subagents"
+python3 - "$TR" <<'EOF'
+import json, sys
+tr = sys.argv[1]
+def row(kind, t, **kw):
+    d = {"type": kind, "timestamp": f"2026-09-14T15:{t}Z", "message": {"role": "user" if kind == "user" else "assistant"}}
+    d["message"].update(kw.pop("message", {})); d.update(kw); return json.dumps(d)
+def use(cr, cw=0, out=100): return {"input_tokens": 10, "cache_read_input_tokens": cr, "cache_creation_input_tokens": cw, "output_tokens": out}
+main = [row("user", "00:00", message={"content": "/intentpipe:build 1"}),
+        row("assistant", "00:02", requestId="m1", message={"model": "claude-opus-5", "usage": use(20000, 20000),
+            "content": [{"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": "sleep 1"}}]}),
+        row("user", "00:03", message={"content": [{"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}),
+        row("assistant", "00:05", requestId="m2", message={"model": "claude-opus-5", "usage": use(40000), "content": [{"type": "text", "text": "done"}]})]
+sub = [row("user", "00:03", message={"content": "Implement task 1"}),
+       row("assistant", "00:04", requestId="s1", message={"model": "claude-sonnet-5", "usage": use(0, 26000),
+           "content": [{"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "scripts/verify.sh app"}}]}),
+       row("user", "00:34", message={"content": [{"type": "tool_result", "tool_use_id": "t2", "content": "VERIFY GREEN"}]}),
+       row("assistant", "00:35", requestId="s2", message={"model": "claude-sonnet-5", "usage": use(26000), "content": [{"type": "text", "text": "RESULT: done"}]}),
+       row("user", "06:35", message={"content": "The coordinator sent a message while you were working: fix"}),
+       row("assistant", "06:36", requestId="s3", message={"model": "claude-sonnet-5", "usage": use(0, 27000), "content": [{"type": "text", "text": "fixed"}]})]
+open(f"{tr}/smoke-sess-1.jsonl", "w").write("\n".join(main) + "\n")
+open(f"{tr}/smoke-sess-1/subagents/agent-1.jsonl", "w").write("\n".join(sub) + "\n")
+open(f"{tr}/smoke-sess-1/subagents/agent-1.meta.json", "w").write(json.dumps({"agentType": "intentpipe:implementer", "model": "sonnet"}))
+EOF
 # -u ANTHROPIC_*: pin subscription mode so the assertion doesn't depend on how
 # this box happens to be authenticated.
-lout=$(PATH="$TMP/bin:$PATH" MAX_TASKS=1 env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+lout=$(PATH="$TMP/bin:$PATH" MAX_TASKS=1 INTENTPIPE_TRANSCRIPTS="$TMP/transcripts" env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
        "$INTENTPIPE/scripts/loop.sh" 2>&1) || fail "loop.sh failed: $lout"
 echo "$lout" | grep -q '1852k tok (1840k in / 12k out)' \
   || fail "loop.sh must report token usage next to the cost: $lout"
@@ -814,6 +843,19 @@ grep -qE '^Timing: total [0-9]+[hms].* llm .* verify ' intentpipe/tasks/"$t4"-*/
   || fail "Timing field must break the task down per step"
 grep -q '^verify:app	' intentpipe/tasks/"$t4"-*/timings.tsv \
   || fail "a gate run inside the session must land in that task's timings.tsv"
+# ...and the anatomy: which agent, how many requests/tokens, how long it idled
+# between rounds, and how many times verify.sh ran — the totals above can't say.
+grep -q '^Session: smoke-sess-1' intentpipe/tasks/"$t4"-*/task.md \
+  || fail "task.md must record the session id(s) so anatomy can be re-run by hand"
+echo "$lout" | grep -q '^   anatomy: orchestrator opus 2req 80k .* implementer sonnet 3req 79k .* ×2 (idle 6m00s) · verify.sh ×1' \
+  || fail "loop.sh must report the per-agent anatomy line: $lout"
+grep -q '^Anatomy: orchestrator opus 2req' intentpipe/tasks/"$t4"-*/task.md \
+  || fail "Anatomy field must carry the compact per-agent breakdown"
+a4=$(ls intentpipe/tasks/"$t4"-*/anatomy.md)
+grep -q '^| implementer r2 | sonnet | 15:06:35 | 1s | 1 | 27k→27k | 27k | 27k |' "$a4" \
+  || fail "anatomy.md must split the implementer into rounds and flag the re-uploaded context: $(cat "$a4")"
+grep -q '^| implementer r1 | .* | 6m00s |$' "$a4" || fail "anatomy.md must show the idle gap after round 1: $(cat "$a4")"
+grep -q '^verify.sh invocations (1):' "$a4" || fail "anatomy.md must list verify.sh invocations: $(cat "$a4")"
 
 # --- per-task model: the planner's Model: field picks the session model, an
 # explicit MODEL= pins the whole run over it, and an unknown value warns and
