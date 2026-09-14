@@ -202,8 +202,8 @@ cmd_diagnose() {
   # Workspace cleanliness — independent of task status. A build session that died
   # after editing files but before committing (or once its task was reset to todo)
   # leaves a dirty tree that preflight hard-fails on, while NO task is
-  # blocked/in-progress — so the loop above sees nothing and unblock used to find
-  # nothing to do. Surface it as its own signal; clean-repo (below) resolves it.
+  # blocked/in-progress, so the loop above cannot see it. Surface it as its own
+  # signal; clean-repo (below) resolves it.
   for repo in $REPOS; do
     path="$(repo_path "$repo")" || continue
     [ -d "$path" ] || continue
@@ -228,10 +228,9 @@ cmd_clean_repo() { # Recoverably clear a repo's dirty working tree so preflight
     echo "clean-repo: $repo already clean"; return 0
   fi
   # A crashed docker run writes root-owned build artifacts through the bind
-  # mount; the stash below then dies on EPERM, and agents have improvised
-  # unbounded `sudo rm -rf` inside the checkout. Reclaim OWNERSHIP instead —
-  # bounded to this repo and destroys nothing; the stash still decides what
-  # leaves the tree.
+  # mount, and the stash below dies on EPERM. Reclaim OWNERSHIP rather than
+  # delete — bounded to this repo, destroys nothing; the stash still decides
+  # what leaves the tree.
   local foreign owner
   owner=$(id -un)
   foreign=$(find "$path" ! -user "$owner" 2>/dev/null | head -200) || true
@@ -552,7 +551,7 @@ cmd_reopen() {
   # A branch with commits is resumable work — reopen to in-progress and let
   # task.sh start check it out. A branch with no commits (or none at all) is an
   # empty orphan: abandon it (restore repos, delete branch) so it restarts clean
-  # instead of resuming an empty branch — the manual recovery this used to need.
+  # instead of resuming an empty branch.
   if branch_has_commits "$id"; then
     set_field "$md" Status in-progress; echo "reopened $id (branch has commits — resume)"; return
   fi

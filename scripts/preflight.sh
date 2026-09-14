@@ -44,7 +44,7 @@ done
 # The agents' `memory: project` store resolves from the session's cwd. A store
 # anywhere but the project root means some launcher ran from the wrong directory
 # — the lessons written there are invisible to every other launcher
-# (proposals/2026-07-29-agent-memory-forks-by-cwd.md). Hard-fail until merged.
+# Hard-fail.
 strays=("$TASKS/.claude/agent-memory" "$TASKS"/*/.claude/agent-memory)
 [ "$(basename "$WS")" != "intentpipe" ] || strays+=("$WS/.claude/agent-memory")
 for stray in "${strays[@]}"; do

@@ -37,13 +37,13 @@ BASH_DENY = [
 
 # Only under DONE=pr, where the platform is the merge arbiter: a
 # hand-push of the default branch there lands work that skipped review. Under
-# DONE=local the pipeline publishes that branch itself (publish.sh, #42), so
+# DONE=local the pipeline publishes that branch itself (publish.sh), so
 # pushing it is the normal flow, not an offence.
 PR_MODE_DENY = [
     # main/master must be the ref being pushed — a whole argument, or the right
-    # half of a `HEAD:main` refspec. `\b(main|master)\b` also fired on
-    # `feat/master-fix` and, worse, on a `gh pr create --base master` chained
-    # after a perfectly good task-branch push.
+    # half of a `HEAD:main` refspec. A bare `\b(main|master)\b` would also fire
+    # on `feat/master-fix` and on a `gh pr create --base master` chained after a
+    # legal task-branch push.
     (r"git\s+push\b.*(\s|:)(refs/heads/)?(main|master)(\s|:|$)",
      "under DONE=pr, pushing the default branch is forbidden; work on the task branch, task.sh opens the PR"),
 ]

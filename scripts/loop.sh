@@ -36,9 +36,6 @@
 # at high regardless (agents/reviewer.md) and catches what a cheaper pass misses;
 # the planner's Review: light (copy/constants/config) puts the reviewer on sonnet
 # instead — the build skill reads that field itself, loop.sh does not pass it.
-# (The agent-frontmatter `effort:` key was undocumented at CLI 2.1.263; if it is
-# ignored the reviewer inherits the session's effort — check a reviewer
-# transcript before relying on it.)
 # Every finished task reports what it cost in BOTH currencies — dollars (real, or
 # API-equivalent on a subscription) and tokens — plus a per-step wall-clock
 # breakdown (preflight / llm / verify / smoke) collected in tasks/<id>/timings.tsv
@@ -51,7 +48,7 @@ SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPTS/lib.sh"
 # `claude -p` below resolves the agents' `memory: project` store from cwd, so
 # every launcher must agree on one directory or the implementer's and reviewer's
-# lessons fork per launcher (proposals/2026-07-29-agent-memory-forks-by-cwd.md).
+# lessons fork per launcher.
 # That directory is the project root — the workspace's parent when state lives in
 # an intentpipe/ child, the workspace itself in the flat layout.
 case "$(basename "$WS")" in intentpipe) cd "$(dirname "$WS")" ;; *) cd "$WS" ;; esac
@@ -90,9 +87,9 @@ MODEL_ARG=$(model_arg "$MODEL") \
 # the reviewer, reads verdicts, decides fix rounds and blocks — few turns, all
 # judgment. It runs on ORCH_MODEL (default opus) whatever the task's pick; the
 # task's Model: is handed to the skill in the prompt (`model=<m>`) and applies to
-# the implementer agent only. Quorum 0071: a sonnet orchestrator parked itself on
-# a wake-up timer waiting for a subagent and ended its turn — a headless run
-# ends with the turn, and the task blocked with no committed work.
+# the implementer agent only. A headless run ends with the turn, so an
+# orchestrator that ends its turn early strands the task; the strongest model is
+# cheap insurance on those few turns.
 ORCH_MODEL="${ORCH_MODEL:-opus}"
 ORCH_MODEL_ARG=$(model_arg "$ORCH_MODEL") \
   || { echo "ERROR: ORCH_MODEL must be opus, sonnet, or fable (got '$ORCH_MODEL')" >&2; exit 1; }
@@ -161,7 +158,7 @@ done
 
 # Cold-start reconcile: a session killed mid-task leaves an orphan in-progress
 # that a fresh run's task.sh next would otherwise skip. One with committed work is
-# resumed (task.sh next now returns in-progress); one with a zero-commit branch was
+# resumed (task.sh next returns in-progress); one with a zero-commit branch was
 # killed before any work landed — abandon it so its repo is restored to
 # DEFAULT_BRANCH and it restarts clean rather than resuming an empty branch. Either
 # way task.sh next gates its dependents until it reaches a terminal state.
@@ -269,9 +266,9 @@ while [ "$n" -lt "$MAX_TASKS" ]; do
       park_wip "$id" "wip: interrupted by usage limit"
       [ "$status" = "blocked" ] && "$SCRIPTS/task.sh" reopen "$id" >/dev/null
       limit_retries=$((limit_retries + 1))
-      # Bounded, and loud only once. Unbounded retries polled a limit for 3.5h
-      # (seven waits on one task) and fired an identical Telegram ping every time,
-      # which trains the human to ignore the channel. The FIRST wait is worth a
+      # Bounded, and loud only once: an unbounded wait polls a limit for hours,
+      # and an identical ping on every attempt trains the human to ignore the
+      # channel. The FIRST wait is worth a
       # notification — it explains a stalled loop — and so is giving up; the ones
       # in between say nothing new and stay in the log.
       if [ "$limit_retries" -gt "$MAX_LIMIT_RETRIES" ]; then
@@ -352,8 +349,8 @@ except Exception as e:
     # count behind it says nothing about how much work a task actually was.
     # Summed over `modelUsage` (per model, subagents included), NOT the
     # top-level `usage`: that one covers the orchestrating thread only, and only
-    # the requests since its last background wake — task tyf-0071 logged 259k
-    # for a build whose transcripts held 2.9M. `usage` is the fallback for an
+    # the requests since its last background wake, which undercounts a build by
+    # an order of magnitude. `usage` is the fallback for an
     # envelope without modelUsage (older CLI, or an errored run).
     usage=$(echo "$out" | python3 -c 'import json,sys
 try: env = json.load(sys.stdin)

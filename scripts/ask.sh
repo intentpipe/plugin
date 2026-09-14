@@ -6,13 +6,13 @@
 # resolve). Tolerant like notify.sh — missing creds just means "print only" (the
 # task is still blocked, so it surfaces in NEEDS_HUMAN either way).
 #
-# Task 0071: the same question also reaches Quorum's chat for the project —
+# The same question also reaches Quorum's chat for the project —
 # the task's feature channel when it has one, its project chat otherwise —
 # independent of Telegram creds and never affecting this script's own
 # tolerance. Quorum has no reply-routing of its own: the human still answers
 # on Telegram, task.sh resolve folds it in either way.
 #
-# Task 0072: that post is a `decision_request` message, not `text` — it
+# That post is a `decision_request` message, not `text` — it
 # carries the task id and the bare question, so Quorum renders a real card
 # with a reply box that answers through the control plane's own decision
 # endpoint (`POST .../tasks/{id}/decision`), same `task.sh resolve` underneath.
