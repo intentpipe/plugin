@@ -60,6 +60,8 @@ PR: -
 Rounds: 0
 Cost: -
 Timing: -
+Session: -
+Anatomy: -
 Decision: -
 Resources: -
 Model: -
