@@ -348,11 +348,22 @@ except Exception as e:
     # Tokens from the same envelope. Cache reads/writes are input the session
     # really consumed, so they count — an API-equiv cost figure with no token
     # count behind it says nothing about how much work a task actually was.
+    # Summed over `modelUsage` (per model, subagents included), NOT the
+    # top-level `usage`: that one covers the orchestrating thread only, and only
+    # the requests since its last background wake — task tyf-0071 logged 259k
+    # for a build whose transcripts held 2.9M. `usage` is the fallback for an
+    # envelope without modelUsage (older CLI, or an errored run).
     usage=$(echo "$out" | python3 -c 'import json,sys
-try: u = json.load(sys.stdin).get("usage") or {}
-except Exception: u = {}
-g = lambda k: u.get(k) or 0
-print(g("input_tokens") + g("cache_creation_input_tokens") + g("cache_read_input_tokens"), g("output_tokens"))' 2>/dev/null || echo "0 0")
+try: env = json.load(sys.stdin)
+except Exception: env = {}
+mu = env.get("modelUsage") or {}
+if mu:
+    g = lambda k: sum((m.get(k) or 0) for m in mu.values() if isinstance(m, dict))
+    print(g("inputTokens") + g("cacheCreationInputTokens") + g("cacheReadInputTokens"), g("outputTokens"))
+else:
+    u = env.get("usage") or {}
+    g = lambda k: u.get(k) or 0
+    print(g("input_tokens") + g("cache_creation_input_tokens") + g("cache_read_input_tokens"), g("output_tokens"))' 2>/dev/null || echo "0 0")
     task_in=$((task_in + ${usage%% *})); task_out=$((task_out + ${usage##* }))
     # A stalled resume: the session exited cleanly but committed nothing new — so
     # resuming again would just no-op. Detected by comparing branch tips.

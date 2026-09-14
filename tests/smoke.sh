@@ -793,7 +793,10 @@ cat > "$TMP/bin/claude" <<EOF
 printf '%s\n' "\$*" >> "$TMP/claude-args.log"
 "$INTENTPIPE/scripts/verify.sh" >/dev/null 2>&1   # a session runs the gates
 sleep 1
-echo '{"total_cost_usd": 0.42, "usage": {"input_tokens": 12000, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 1828000, "output_tokens": 11500}}'
+# Top-level usage is the orchestrating thread's last wake only; modelUsage is
+# every model incl. subagents. The report must sum modelUsage (1840k in / 12k
+# out here), and a regression to \`usage\` (258k in / 1k out) is loud.
+echo '{"total_cost_usd": 0.42, "usage": {"input_tokens": 0, "cache_creation_input_tokens": 4590, "cache_read_input_tokens": 253491, "output_tokens": 1000}, "modelUsage": {"claude-opus-5": {"inputTokens": 12000, "cacheCreationInputTokens": 0, "cacheReadInputTokens": 628000, "outputTokens": 5500}, "claude-sonnet-5": {"inputTokens": 0, "cacheCreationInputTokens": 88000, "cacheReadInputTokens": 1112000, "outputTokens": 6000}}}'
 EOF
 chmod +x "$TMP/bin/claude"
 cd "$WS4"
