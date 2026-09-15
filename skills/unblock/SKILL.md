@@ -8,7 +8,7 @@ argument-hint: "[task-id | all] [headless]"
 Target: $ARGUMENTS (empty or `all` → every blocked/in-progress item). You diagnose and orchestrate; you never write code, never bypass a red verify, never merge by hand.
 Scripts: `${CLAUDE_PLUGIN_ROOT}/scripts/`.
 
-Headless mode ($ARGUMENTS contains `headless`): never prompt; the closing summary goes through `${CLAUDE_PLUGIN_ROOT}/scripts/notify.sh`.
+Headless mode ($ARGUMENTS contains `headless`): never prompt, never call notify.sh; the closing summary is your final message, which the daemon posts to the human as one message when the run ends.
 
 1. Run `${CLAUDE_PLUGIN_ROOT}/scripts/task.sh diagnose`: one global `verify:` color; per stuck item `commits=`, `review=`, `faillog=` and the NEEDS_HUMAN `reason:`; a `workspace <repo> dirty on <branch>` line per repo with an uncommitted tree. `(nothing blocked or in-progress)` → say so and stop. A given task id → act only on it.
 2. For each item read the evidence before deciding: the `reason:` line, the tail of `tasks/<id>/loop-fail.log` when `faillog=yes`, `tasks/<id>/review.md` when the reason is about review. Classify against the cases below.
@@ -22,6 +22,6 @@ Headless mode ($ARGUMENTS contains `headless`): never prompt; the closing summar
    - an implementer question in the reason → quote it verbatim.
    - a blocked feature, or "PR closed without merge" / "merged before this task landed" → a human decision; say which.
 5. `(nothing blocked or in-progress)` while `updates/` still holds unplanned notes → the plan step never ran or failed: say so and point to `/intentpipe:plan` (headless: 🧠); do not plan here.
-6. Close with a summary: what you auto-resolved, and each item still needing a human with its one-line reason. If you reset a task to `todo` or merged finished work, say the queue is clear for `/intentpipe:build all` (headless: 🚀). Headless → post it via `notify.sh`. Append nothing to NEEDS_HUMAN.md the diagnosis did not establish.
+6. Close with a summary: what you auto-resolved, and each item still needing a human with its one-line reason. If you reset a task to `todo` or merged finished work, say the queue is clear for `/intentpipe:build all` (headless: 🚀). Headless → it is your final message, nothing after it. Append nothing to NEEDS_HUMAN.md the diagnosis did not establish.
 
 Never edit code, never merge manually, never bypass a red verify. Unsure whether a case is safe → escalate.
