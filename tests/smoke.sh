@@ -991,6 +991,8 @@ g '{"tool_name":"Bash","tool_input":{"command":"rm -rf /"}}' && fail "guard: rm 
 g '{"tool_name":"Bash","tool_input":{"command":"git push origin task/0001-x"}}' || fail "guard: task-branch push blocked"
 g '{"tool_name":"Bash","tool_input":{"command":"rm -rf node_modules"}}' || fail "guard: normal rm blocked"
 g '{"tool_name":"Bash","tool_input":{"command":"rm -rf intentpipe/updates"}}' && fail "guard: updates folder rm allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"cd /x/intentpipe/tasks/0073-slug && sed -i s/a/b/ task.md"}}' && fail "guard: cd into a task folder allowed" || true
+g '{"tool_name":"Bash","tool_input":{"command":"sed -i s/a/b/ intentpipe/tasks/0073-slug/task.md"}}' || fail "guard: editing a task file by path blocked"
 g '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x/core/CLAUDE.md","content":"x"},"cwd":"/tmp/x"}' && fail "guard: CLAUDE.md write allowed" || true
 g '{"tool_name":"Bash","tool_input":{"command":"echo map >> core/CLAUDE.md"},"cwd":"/tmp/x"}' && fail "guard: redirect into CLAUDE.md allowed" || true
 g '{"tool_name":"Bash","tool_input":{"command":"cat CLAUDE.md"},"cwd":"/tmp/x"}' || fail "guard: reading CLAUDE.md blocked"

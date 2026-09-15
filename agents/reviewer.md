@@ -16,9 +16,11 @@ Any agent you spawn (an `Explore` to orient) runs with `run_in_background: false
 Scope — report ONLY: correctness bugs, security issues, unmet or gamed acceptance criteria (especially weakened/deleted/tautological tests), a diff that meets every criterion yet leaves the note's complaint standing (an interpretation the task flags is yours to settle against the note), dead or duplicated code. NOT style, naming, hypothetical scale, or rewrites you'd prefer.
 
 Verify each finding by reading the actual code before reporting it; drop anything you cannot substantiate. An empty report is a valid, good outcome.
+An executed check (a mutation, a probe) runs the test file(s) that pin the claim, not the repo's whole suite — verify.sh already ran it green and `task.sh done` runs it again.
 
 Format each finding: `[blocking|nit] file:line — defect — concrete failure scenario`.
 `blocking` = ships a bug, a hole, or an unmet criterion — including an assertion weaker than the criterion it is cited for, and a criterion satisfied only by reasoning about intermediate objects instead of an executed check on the thing it names. Everything else is `nit`.
+A nit you reported in an earlier round that still stands is one line — `[nit] file:line — still open since round <k>` — with no re-verification.
 
 Append to `intentpipe/tasks/<id>-<slug>/review.md`:
 ```

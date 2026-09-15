@@ -33,6 +33,10 @@ BASH_DENY = [
     (r"rm\s+(-\S+\s+)*\S*\bupdates/\*", "wildcard rm in updates/ is forbidden (it takes README.md with it); remove planned note files by name"),
     (r"(>>?|\btee\b(\s+-a)?)\s*\S*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
     (r"\bsed\s+(-\S+\s+)*-i\b.*\bCLAUDE\.md\b", CLAUDE_MD_REASON),
+    # The shell cwd persists across Bash calls and every agent spawned afterwards
+    # resolves its `memory: project` store from it — a task folder as cwd forks
+    # the store there, and preflight refuses the next run.
+    (r"(^|\s)cd\s+\S*intentpipe/tasks/\d{4}", "cd into a task folder forks the agents' memory store (the cwd persists); stay in the project root and address the folder by path"),
 ]
 
 # Only under DONE=pr, where the platform is the merge arbiter: a
