@@ -35,7 +35,8 @@
 # and EFFORT= pins it for the run. Medium is the default because a full review runs
 # at high regardless (agents/reviewer.md) and catches what a cheaper pass misses;
 # the planner's Review: light (copy/constants/config) puts the reviewer on sonnet
-# instead — the build skill reads that field itself, loop.sh does not pass it.
+# instead and Review: none (pure values) skips it — the build skill reads that
+# field itself, loop.sh does not pass it.
 # Every finished task reports what it cost in BOTH currencies — dollars (real, or
 # API-equivalent on a subscription) and tokens — plus a per-step wall-clock
 # breakdown (preflight / llm / verify / smoke) collected in tasks/<id>/timings.tsv
