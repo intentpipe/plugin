@@ -148,6 +148,19 @@ SMOKE_app="touch smoked.txt" "$V" >/dev/null 2>&1 && fail "smoke: red verify mus
 [ ! -f app/smoked.txt ] || fail "smoke: must not run when the repo's verify failed"
 mv app/ok.hidden app/ok.txt
 
+# --- targeted tests: verify.sh --tests <repo> <paths> via TEST_<repo>
+mkdir -p app/test && echo t > app/test/a_test.txt
+out=$(TEST_app="ls" "$V" --tests app test/a_test.txt 2>&1) || fail "tests: a passing runner must be green"
+echo "$out" | grep -q "TESTS GREEN" || fail "tests: green run must say TESTS GREEN"
+out=$(cd app && TEST_app="ls" "$V" --tests app test/a_test.txt 2>&1) || fail "tests: a cwd-relative path must resolve"
+echo "$out" | grep -q "a_test.txt" || fail "tests: the path must reach the runner"
+TEST_app="ls" "$V" --tests app test/missing_test.txt >/dev/null 2>&1 && fail "tests: a red runner must fail" || true
+TEST_app="ls" "$V" --tests app >/dev/null 2>&1 && fail "tests: no paths must be a usage error" || true
+out=$("$V" --tests app test/a_test.txt 2>&1) || fail "tests: no TEST_app must fall back to the full verify (green here)"
+echo "$out" | grep -q "VERIFY GREEN" || fail "tests: fallback must run the full verify"
+grep -q "^test:app" intentpipe/tasks/*/timings.tsv 2>/dev/null || true   # timing only when a task id is pinned
+rm -rf app/test
+
 # --- red verify blocks done
 "$INTENTPIPE/scripts/task.sh" start "$id2" >/dev/null
 "$INTENTPIPE/scripts/task.sh" start "$id2" >/dev/null || fail "start must resume an in-progress task"
