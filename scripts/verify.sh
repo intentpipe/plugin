@@ -8,6 +8,7 @@
 # (never built as a gate — the weakest verifier class). The implementer may not
 # weaken a test to get green, and the reviewer checks for it.
 # Usage: verify.sh [--no-smoke] [repo ...]   (default: all repos, smoke on)
+#        verify.sh --tests <repo> <test path ...>   (only those tests, via TEST_<repo>; no smoke)
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
@@ -61,6 +62,30 @@ run_step() { # run_step <label> <cmd ...> -> the command's exit code
   fi
   return "$rc"
 }
+
+if [ "${1:-}" = "--tests" ]; then
+  # The inner loop: one change, the tests that cover it. The full suite is the
+  # gate's job (task.sh done), not the price of every edit or every mutation
+  # check — on a large suite that is the bulk of a task's wall clock.
+  shift; repo="${1:?usage: verify.sh --tests <repo> <test path ...>}"; shift
+  [ $# -gt 0 ] || { echo "usage: verify.sh --tests <repo> <test path ...>" >&2; exit 1; }
+  cmd="$(test_cmd "$repo")"
+  if [ -z "$cmd" ]; then
+    # No TEST_<repo> declared: same color, full price — never a silent skip.
+    echo "── no TEST_$repo in agents.env; running the full verify instead" >&2
+    exec "$0" --no-smoke "$repo"
+  fi
+  # The runner executes inside the repo; a path the caller typed relative to
+  # its own cwd (the workspace root, another repo) resolves to absolute first,
+  # a repo-relative one passes through untouched.
+  paths=(); for p in "$@"; do [ -e "$p" ] && p=$(cd "$(dirname "$p")" && pwd)/$(basename "$p"); paths+=("$p"); done
+  echo "── test: $repo ${paths[*]}"
+  t0=$(date +%s); rc=0
+  (cd "$(repo_path "$repo")" && run_step "test:$repo" bash -c "$cmd \"\$@\"" _ "${paths[@]}") || rc=$?
+  timing_record "test:$repo" "$(( $(date +%s) - t0 ))"
+  [ "$rc" -eq 0 ] || { echo "TESTS FAILED: $repo" >&2; exit 1; }
+  echo "TESTS GREEN"; exit 0
+fi
 
 failed=""
 [ $# -gt 0 ] || set -- $REPOS
